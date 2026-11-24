@@ -21,7 +21,7 @@ test('management P&L matches Financial-Reporting-Formats.xlsx', () => {
   assert.equal(p.totalOpex, c(11990.78)); assert.equal(p.operatingIncome, c(16433.63)); assert.equal(p.pretax, c(14493.32)); near(p.pretaxPct.value, 0.11955229548867302);
 });
 
-test('salary cap, true profit and adjusted LER match the CF model (PL by Month rows 43–56)', () => {
+test('salary cap, true profit and adjusted LYR match the CF model (PL by Month rows 43–56)', () => {
   const p = computePnl(template(), c(17387.5), DEFAULT_SETTINGS);
   assert.ok(Math.abs(p.salaryCap - c(44718.854)) <= 1); assert.ok(Math.abs(p.salaryCapHeadroom - c(-15017.176)) <= 1);
   assert.equal(p.adjustedPretax, c(-2894.18)); near(p.tLER.value, 1.491443504650575); near(p.adjustedLER.value, 63160.44 / 59736.03);
@@ -60,7 +60,7 @@ test('DSO uses the last two months of sales (BS!55) and is N/A without receivabl
   assert.equal(dso(series(3, false), 2, DEFAULT_SETTINGS).value, null);
 });
 
-test('core capital nets the line of credit and uses the configured basis', () => {
+test('operating reserve nets the line of credit and uses the configured basis', () => {
   const cc = coreCapital(series(12), 11, DEFAULT_SETTINGS);
   // Default: two months of operating expenses and direct labor (13,000 + 30,000 a month); non-labor COGS excluded.
   assert.equal(cc.available, c(80000)); assert.equal(cc.monthlyBasis, c(43000)); assert.equal(cc.target, c(86000)); assert.equal(cc.surplus, c(-6000));
@@ -124,7 +124,7 @@ test('13-week forecast reproduces the Weekly CF template and what-if delays', ()
   assert.equal(late.weeks[0].endCents, c(9000)); assert.equal(late.weeks[4].endCents, c(33000)); assert.equal(late.endCents, f.endCents);
 });
 
-test('weekly GM and LER tracking matches the weekly template', () => {
+test('weekly GM and LYR tracking matches the weekly template', () => {
   const s = mergeSettings({ dlerTarget: 2.25, weeklyGpTargetCents: c(50000) });
   const rows = weeklyRows([[75000, 22500], [85000, 25000], [72500, 20500]].map(([rev, dl], i) => ({ weekStart: `2026-03-${String(2 + i * 7).padStart(2, '0')}`, revenueCents: c(rev), cogsCents: c(rev * 0.35), directLaborCents: c(dl), cashBalanceCents: null, source: 't' })), s);
   near(rows[0].dLER.value, 2.1666666667); assert.equal(rows[0].gpOverUnderCents, c(-1250)); assert.equal(rows[1].gpRollingOverUnderCents, c(4000)); assert.equal(rows[2].gpRollingOverUnderCents, c(1125));
@@ -176,13 +176,13 @@ test('owner market-wage plan: cost, market and income approaches, gap, S-corp an
   assert.ok(weak.flags.some((f) => /more than a year ago/.test(f.text))); assert.equal(weak.totalGapAnnualCents, c(70000)); assert.match(weak.affordability!, /\$20,000 over/);
 });
 
-test('four forces of cash flow: the worked example (taxes, debt, core capital, then distributions)', async () => {
+test('Cash Flow Waterfall: the worked example (taxes, debt, operating reserve, then distributions)', async () => {
   const { fourForces, cashWalk, nextEstimatedTaxDate } = await import('../src/engine/fourforces.ts');
-  // Cash available $225,000 = $100,000 beginning + $125,000 pretax; 40% tax; $50,000 debt; $100,000 core capital target -> $25,000 distributable.
+  // Cash available $225,000 = $100,000 beginning + $125,000 pretax; 40% tax; $50,000 debt; $100,000 operating reserve target -> $25,000 distributable.
   const base = { cashCents: c(225000), locCents: 0, pretaxYtdCents: c(125000), taxRate: 0.4, taxesPaidYtdCents: 0, scheduledDebtCents: c(50000), coreCapitalTargetCents: c(100000), avgMonthlyPretaxCents: c(10000), distributionsYtdCents: 0 };
   const f = fourForces(base);
   assert.deepEqual(f.steps.map((x) => x.needCents), [c(50000), 0, c(50000), c(100000), 0]); assert.equal(f.steps[2].remainingCents, c(125000)); assert.equal(f.availableForDistributionCents, c(25000)); assert.equal(f.shortfallCents, 0);
-  // Spending $100,000 first (vehicle + condo) leaves the core capital target $75,000 short and nothing to distribute.
+  // Spending $100,000 first (vehicle + condo) leaves the operating reserve target $75,000 short and nothing to distribute.
   const spent = fourForces({ ...base, cashCents: c(125000), distributionsYtdCents: c(50000) });
   assert.equal(spent.availableForDistributionCents, 0); assert.equal(spent.shortfallCents, c(75000)); assert.equal(spent.steps[3].fundedCents, c(25000));
   assert.ok(Math.abs(spent.monthsOfProfitToFund! - 12.5) < 1e-9, 'only 60% of profit is retained after tax'); assert.ok(spent.flags.some((x) => /distributions have been taken/.test(x.text)));
@@ -236,7 +236,7 @@ test('reporting rhythms: sales and productivity report, rolling-twelve column, e
   assert.equal(p.rows.find((r) => r.key === '2026-05-04')!.supportedLaborCents, c(10000)); assert.equal(p.rows.find((r) => r.key === '2026-05-18')!.laborOverUnderCents, c(2250));
   // A week without office payroll is reported as not available rather than as a flattering direct-labor-only ratio.
   const q = R.salesProductivity(months, [wk('2026-05-04', 40000, 10000), wk('2026-05-11', 38000, null)], S, null)!; assert.equal(q.weeksMissingLabor, 1); assert.equal(q.rows.at(-1)!.mtdLER.value, null); assert.match(q.rows.at(-2)!.weekLER!.reason!, /not entered/); assert.equal(q.rows.find((r) => r.key === '2026-05-04')!.weekLER!.value, 2);
-  // Rolling-twelve column: pretax below target by $149,500, salary cap $219,500, labor efficiency 1.43 against 2.40 needed.
+  // Rolling-twelve column: pretax below target by $149,500, salary cap $219,500, labor yield 1.43 against 2.40 needed.
   const a = R.r12Row(trailing([mo('2025-12', { revenue: 815000, cogs: 289000, mgmt_labor: 369000, marketing: 48000, facilities: 74000, payroll_taxes_benefits: 31000, other_opex: 72000 })], 0, 1, S)!, S);
   assert.deepEqual([a.grossProfit, a.pretax, a.targetCents, a.aboveBelowCents, a.salaryCap], [c(526000), c(-68000), c(81500), c(-149500), c(219500)]); assert.equal(two(a.ler), 1.43); assert.equal(two(a.lerTarget), 2.4);
   // $1.12M revenue at $106,000 pretax: 15% needs $62,000 more gross profit, about 8% more from the same staff.
@@ -260,7 +260,7 @@ test('reporting rhythms: sales and productivity report, rolling-twelve column, e
   assert.equal(forecast13('2026-11-18', c(10000), [it('bill', 'vendor', '2026-11-20')], 0, {}, 1, 1).weeks[0].lines[0].date, '2026-11-18', 'a pay day already past is paid at the start of the forecast');
 });
 
-test('economic value: blended value, discounts, buyout note, years to repay, net-assets fallback (worked examples)', async () => {
+test('estimated business value: blended value, discounts, buyout note, years to repay, net-assets fallback (worked examples)', async () => {
   const { valuation, defaultValuation, annualPayment, yearsToRepay } = await import('../src/engine/valuation.ts'); const D = defaultValuation(0.4);
   // Company A, year five: last three years of profit $792,000 plus equity $613,500 = $1,405,500.
   const A = { pretaxCents: c(792000), monthsUsed: 36, pretax12Cents: c(300000), equityCents: c(613500), debtCents: 0, ebitda12Cents: c(300000), revenue12Cents: c(3000000), coreCapitalSurplusCents: c(163500), ownerWageApplied: true, asOf: '2026-12' };
@@ -300,7 +300,7 @@ test('value and distributions at 5%, 10% and 15% pretax profit (worked five-year
   assert.deepEqual(col(ten, 'valueCents'), [470000, 750500, 922200, 1196700, 1405500].map(c)); assert.deepEqual(col(ten, 'discountedValueCents'), [300800, 480320, 590208, 765888, 899520].map(c)); assert.equal(ten.totalProfitDistributionsCents, c(209900));
   // 15%: far larger distributions and value from the same revenue.
   assert.deepEqual(col(fifteen, 'profitDistributionCents'), [0, 0, 160500, 174050, 192800].map(c)); assert.deepEqual(col(fifteen, 'equityCents'), [207500, 432500, 467300, 596550, 682750].map(c)); assert.equal(fifteen.totalProfitDistributionsCents, c(527350)); assert.deepEqual(col(fifteen, 'valueCents'), [680000, 1100750, 1223300, 1622550, 1870750].map(c)); assert.equal(fifteen.yearCoreCapitalReached, 1);
-  // 5%: five years to get near the core capital target and no profit distributions at all.
+  // 5%: five years to get near the operating reserve target and no profit distributions at all.
   assert.deepEqual(col(five, 'equityCents'), [102500, 177500, 242600, 343700, 436700].map(c)); assert.equal(five.totalProfitDistributionsCents, 0); assert.equal(five.endingValueCents, c(832700)); assert.equal(five.yearCoreCapitalReached, null); assert.deepEqual(col(five, 'coreCapitalTargetCents'), [166250, 304000, 327750, 451250, 475000].map(c));
 });
 
@@ -318,7 +318,7 @@ test('simple forecast model: profit to cash road map (worked example) and the wh
   assert.deepEqual([rows[0].arChange, rows[0].apChange, rows[0].debtChange, rows[0].equityChange], [c(-15000), c(-5000), c(15000), c(-5000)]);
   assert.deepEqual(col('netChange'), [-2000, -800, 2050, 11000, -10360].map(c)); assert.deepEqual(col('cashEnd'), [23000, 22200, 24250, 35250, 24890].map(c));
   assert.deepEqual(two('ler'), [2.67, 3.08, 2.51, 2.7, 2.85]); assert.deepEqual(two('lerYtd'), [2.67, 2.87, 2.74, 2.73, 2.75]); assert.deepEqual(rows.slice(2).map((r) => Number(r.dso.value!.toFixed(2))), [30, 30, 30]);
-  // Core capital is cash less debt; the target is two months of operating expenses, with or without cost of goods sold.
+  // Operating reserve is cash less debt; the target is two months of operating expenses, with or without cost of goods sold.
   assert.deepEqual(col('coreCapital'), [-42000, -12800, -5750, 10250, 4890].map(c)); assert.deepEqual(col('targetWithoutCogs'), [64000, 64000, 71200, 76000, 78400].map(c)); assert.deepEqual(col('targetWithCogs'), [184000, 191600, 190900, 208000, 218800].map(c));
   assert.equal(c(18460), Math.round(0.4 * (rows[2].pretax + rows[3].pretax + rows[4].pretax)), 'the distribution is 40% of the three previous months of profit');
 
@@ -342,7 +342,7 @@ test('simple forecast model: profit to cash road map (worked example) and the wh
   // Profit up but cash down is called out; running out of cash is called out.
   const grow = W.whatIf(hist, S, { salesChangePct: 0.1, dsoDays: 60 }); assert.ok(grow.flags.some((f) => /Profit is not cash/.test(f.text)));
   assert.ok(W.whatIf(hist, S, { salesChangePct: -0.4 }).flags.some((f) => /Cash runs out/.test(f.text)));
-  // Distributing everything above the core capital target leaves core capital at the target; no distributions keeps the cash.
+  // Distributing everything above the operating reserve target leaves operating reserve at the target; no distributions keeps the cash.
   const ex = W.whatIf(hist, S, { distributionPolicy: 'tax_then_excess' }); assert.ok(ex.summary!.next12.profitDistributions > 0); assert.ok(ex.months.at(-1)!.coreCapital >= ex.months.at(-1)!.coreCapitalTarget);
   assert.equal(W.whatIf(hist, S, { distributionPolicy: 'none' }).summary!.next12.endCash, c(50000 + 96000));
   // No balance sheet: profit is forecast, cash is not. Too little history: nothing is.
@@ -356,7 +356,7 @@ test('rolling three: direction beside the rolling twelve, with the seasonal chec
   const build = (f: (i: number) => [number, number], n = 18) => Array.from({ length: n }, (_, i) => mk(i, ...f(i))); const by = (r: any) => Object.fromEntries(r.signals.map((x: any) => [x.key, x]));
   // Steady business: everything in line.
   const flat = R.rolling3(build(() => [100000, 30000]), 17, S)!; assert.ok(flat.signals.every((x) => x.status === 'in_line')); assert.equal(flat.lastYearAvailable, true); assert.equal(flat.signals[0].r3, 0.2);
-  // Payroll up $10,000 a month in the last three months: profit and labor efficiency slip, and last year confirms it is not seasonal.
+  // Payroll up $10,000 a month in the last three months: profit and labor yield slip, and last year confirms it is not seasonal.
   const slip = by(R.rolling3(build((i) => [100000, i >= 15 ? 40000 : 30000]), 17, S)); assert.equal(slip.profitability.status, 'worse'); assert.equal(slip.profitability.confirmed, true); near(slip.profitability.r3, 0.1); near(slip.profitability.r12, 0.175); near(slip.profitability.lastYear, 0.2);
   assert.equal(slip.labor.status, 'worse'); near(slip.labor.r3, 1.5); assert.equal(slip.sales.status, 'in_line'); assert.match(slip.profitability.text, /10\.0%, against 17\.5% for the twelve months and 20\.0% in the same three months last year: slipping\./);
   // A seasonal business: the same three months are slow every year, so the gap to the twelve months is not read as a decline.

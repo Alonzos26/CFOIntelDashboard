@@ -4,12 +4,12 @@
 
 ```
 src/engine/    Pure calculation engine. No I/O. Same code runs on the server and in the browser.
-  core.ts        management P&L, LERs, salary cap, rolling windows, DSO, core capital, cash-flow reconciliation
+  core.ts        management P&L, LYRs, salary cap, rolling windows, DSO, operating reserve, cash-flow reconciliation
   scorecard.ts   seven-measure scorecard and grading
   forecast.ts    driver-based monthly forecast
   hiring.ts      cost of hire, break-even, ramp, cash and guardrail
   cash.ts        cash rhythms and the 13-week forecast
-  weekly.ts      weekly GM / LER tracking and briefing draft
+  weekly.ts      weekly GM / LYR tracking and briefing draft
   kpi.ts         safe KPI formula parser and evaluator
   insights.ts    Observation → Cause → Impact → Action rules
   profitplan.ts  profit needs and gap analysis

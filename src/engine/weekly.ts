@@ -1,5 +1,5 @@
-// Weekly Pulse: weekly gross margin and labor-efficiency tracking with running over/under targets.
-// Sources: Reports to Watch "Weekly GM and LER", Labor Productivity (week / MTD / YTD LER).
+// Weekly Pulse: weekly gross margin and labor-yield tracking with running over/under targets.
+// Sources: Reports to Watch "Weekly GM and LYR", Labor Productivity (week / MTD / YTD LYR).
 import { type Ratio, type Settings, fmtMoney, fmtPct, fmtRatio, ratio } from './core.ts';
 
 export interface WeeklyEntry { weekStart: string; revenueCents: number; cogsCents: number; directLaborCents: number; /** Office and management payroll for the week; null when not entered. */ otherLaborCents?: number | null; cashBalanceCents: number | null; source: string }
@@ -50,19 +50,19 @@ export interface Briefing { performance: string; improved: string; attention: st
 export function draftBriefing(rows: WeeklyRow[], idx: number, s: Settings, cash?: { lowestCents: number; lowestWeek: string; floorCents: number } | null): Briefing {
   const r = rows[idx]; const p = idx > 0 ? rows[idx - 1] : null;
   const improved: string[] = [], attention: string[] = [], actions: string[] = [], watch: string[] = [];
-  const perf = `Sales were ${fmtMoney(r.revenueCents)} with gross profit of ${fmtMoney(r.grossProfitCents)} (${fmtPct(r.grossMarginPct.value)} margin). Direct labor was ${fmtMoney(r.directLaborCents)}, a direct LER of ${fmtRatio(r.dLER.value)}.` +
+  const perf = `Sales were ${fmtMoney(r.revenueCents)} with gross profit of ${fmtMoney(r.grossProfitCents)} (${fmtPct(r.grossMarginPct.value)} margin). Direct labor was ${fmtMoney(r.directLaborCents)}, a direct LYR of ${fmtRatio(r.dLER.value)}.` +
     (r.gpOverUnderCents !== null ? ` Gross profit was ${fmtMoney(Math.abs(r.gpOverUnderCents))} ${r.gpOverUnderCents >= 0 ? 'over' : 'under'} the weekly target of ${fmtMoney(r.gpTargetCents)}.` : '');
   if (p) {
     if (r.grossProfitCents > p.grossProfitCents) improved.push(`Gross profit rose ${fmtMoney(r.grossProfitCents - p.grossProfitCents)} from the prior week.`);
     else if (r.grossProfitCents < p.grossProfitCents) attention.push(`Gross profit fell ${fmtMoney(p.grossProfitCents - r.grossProfitCents)} from the prior week.`);
     if (r.dLER.value !== null && p.dLER.value !== null) {
-      if (r.dLER.value > p.dLER.value + 0.02) improved.push(`Direct LER improved from ${fmtRatio(p.dLER.value)} to ${fmtRatio(r.dLER.value)}.`);
-      else if (r.dLER.value < p.dLER.value - 0.02) attention.push(`Direct LER slipped from ${fmtRatio(p.dLER.value)} to ${fmtRatio(r.dLER.value)}.`);
+      if (r.dLER.value > p.dLER.value + 0.02) improved.push(`Direct LYR improved from ${fmtRatio(p.dLER.value)} to ${fmtRatio(r.dLER.value)}.`);
+      else if (r.dLER.value < p.dLER.value - 0.02) attention.push(`Direct LYR slipped from ${fmtRatio(p.dLER.value)} to ${fmtRatio(r.dLER.value)}.`);
     }
   }
   if (r.laborOverUnderCents !== null && s.dlerTarget) {
     if (r.laborOverUnderCents > 0) {
-      attention.push(`Direct labor ran ${fmtMoney(r.laborOverUnderCents)} over the spend that a ${fmtRatio(s.dlerTarget)} LER target allows for this week's gross profit.`);
+      attention.push(`Direct labor ran ${fmtMoney(r.laborOverUnderCents)} over the spend that a ${fmtRatio(s.dlerTarget)} LYR target allows for this week's gross profit.`);
       actions.push('Review scheduling and job assignments for the week against the hours actually billed or produced.');
     } else improved.push(`Direct labor came in ${fmtMoney(-r.laborOverUnderCents)} under the target spend.`);
   }
@@ -77,7 +77,7 @@ export function draftBriefing(rows: WeeklyRow[], idx: number, s: Settings, cash?
     }
     watch.push(`Lowest projected cash in the next 13 weeks: ${fmtMoney(cash.lowestCents)} (week of ${cash.lowestWeek}).`);
   }
-  watch.push(`Month-to-date direct LER is ${fmtRatio(r.mtdLER.value)}${s.dlerTarget ? ` against a target of ${fmtRatio(s.dlerTarget)}` : ''}.`);
+  watch.push(`Month-to-date direct LYR is ${fmtRatio(r.mtdLER.value)}${s.dlerTarget ? ` against a target of ${fmtRatio(s.dlerTarget)}` : ''}.`);
   const join = (a: string[], empty: string) => (a.length ? a.join(' ') : empty);
   return { performance: perf, improved: join(improved, 'No measured improvement over the prior week.'), attention: join(attention, 'Nothing fell outside target ranges this week.'), actions: join(actions, 'No corrective action is indicated by this week\'s figures.'), watch: watch.join(' ') };
 }

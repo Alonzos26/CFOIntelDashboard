@@ -23,13 +23,13 @@ export function generateInsights(sc: Scorecard, r12: WindowResult, prior: Window
   if (sev(labor) && s.dlerTarget && r12.dLER.value !== null) {
     const allowed = Math.round(r12.grossProfit / s.dlerTarget); const over = r12.lines.direct_labor - allowed;
     const gpNeeded = Math.round(r12.lines.direct_labor * s.dlerTarget) - r12.grossProfit;
-    out.push({ ...base, key: 'labor_efficiency', kpi: 'labor', severity: sev(labor) + 0.3, title: 'Labor efficiency is below your target.',
-      observation: `Direct LER is ${fmtRatio(r12.dLER.value)} against a target of ${fmtRatio(s.dlerTarget)}.`,
+    out.push({ ...base, key: 'labor_efficiency', kpi: 'labor', severity: sev(labor) + 0.3, title: 'Labor yield is below your target.',
+      observation: `Direct LYR is ${fmtRatio(r12.dLER.value)} against a target of ${fmtRatio(s.dlerTarget)}.`,
       cause: `Direct labor of ${fmtMoney(r12.lines.direct_labor)} produced ${fmtMoney(r12.grossProfit)} of gross profit. Labor cost has grown relative to the gross profit it produces.`,
       impact: `At the target, this gross profit supports ${fmtMoney(allowed)} of direct labor — ${fmtMoney(over)} less than was spent. Equivalently, the current team would need to produce ${fmtMoney(gpNeeded)} more gross profit.`,
       action: 'Review utilization and service pricing before increasing headcount.',
-      impactCents: over, impactBasis: 'Direct labor − (gross profit ÷ target direct LER), rolling 12 months.',
-      evidence: [{ label: 'Gross profit (R12)', value: fmtMoney(r12.grossProfit) }, { label: 'Direct labor (R12)', value: fmtMoney(r12.lines.direct_labor) }, { label: 'Target direct LER', value: fmtRatio(s.dlerTarget) }] });
+      impactCents: over, impactBasis: 'Direct labor − (gross profit ÷ target direct LYR), rolling 12 months.',
+      evidence: [{ label: 'Gross profit (R12)', value: fmtMoney(r12.grossProfit) }, { label: 'Direct labor (R12)', value: fmtMoney(r12.lines.direct_labor) }, { label: 'Target direct LYR', value: fmtRatio(s.dlerTarget) }] });
   }
   const profit = by.profitability;
   if (sev(profit) && r12.adjustedPretaxPct.value !== null) {
@@ -57,12 +57,12 @@ export function generateInsights(sc: Scorecard, r12: WindowResult, prior: Window
     impactCents: -r12.salaryCapHeadroom, impactBasis: 'Adjusted labor − salary cap, rolling 12 months.',
     evidence: [{ label: 'Salary cap', value: fmtMoney(r12.salaryCap) }, { label: 'Adjusted labor', value: fmtMoney(r12.adjustedLabor) }] });
   const core = by.core_capital;
-  if (sev(core) && cc.available !== null) out.push({ ...base, key: 'core_capital', kpi: 'core_capital', severity: sev(core) + 0.1, title: 'Cash reserves are below the core capital target.',
+  if (sev(core) && cc.available !== null) out.push({ ...base, key: 'core_capital', kpi: 'core_capital', severity: sev(core) + 0.1, title: 'Cash reserves are below the operating reserve target.',
     observation: `Available cash is ${fmtMoney(cc.available)} against a target of ${fmtMoney(cc.target)} (${fmtRatio(cc.monthsCovered.value, 1).replace('x', '')} months of expenses covered).`,
     cause: `The target is ${cc.basisLabel}.${cc.locBalance ? ` A line-of-credit balance of ${fmtMoney(cc.locBalance)} is deducted from cash.` : ''}`,
     impact: `The reserve is short by ${fmtMoney(-(cc.surplus ?? 0))}. Until it is funded, a slow collection month would have to be covered by debt or delayed payments.`,
     action: 'Hold owner distributions beyond tax needs until the reserve reaches target.',
-    impactCents: -(cc.surplus ?? 0), impactBasis: 'Core capital target − (cash − line of credit).',
+    impactCents: -(cc.surplus ?? 0), impactBasis: 'Operating reserve target − (cash − line of credit).',
     evidence: [{ label: 'Cash', value: fmtMoney(cc.cash) }, { label: 'Line of credit', value: fmtMoney(cc.locBalance) }, { label: 'Target', value: fmtMoney(cc.target) }] });
   const d = by.dso;
   if (sev(d) && d.actual !== null && s.dsoTargetDays) {

@@ -66,7 +66,7 @@ function rawMeasures(months: MonthData[], idx: number, s: Settings): Record<Meas
     },
     labor: {
       actual: r.dLER.value, target: s.dlerTarget, attainment: r.dLER.value === null || s.dlerTarget === null ? null : r.dLER.value / s.dlerTarget,
-      note: r.dLER.reason ?? (s.dlerTarget === null ? 'No direct labor efficiency target has been set for this client.' : null), targetLabel: 'Target direct LER',
+      note: r.dLER.reason ?? (s.dlerTarget === null ? 'No direct labor yield target has been set for this client.' : null), targetLabel: 'Target direct LYR',
     },
   };
 }
@@ -77,8 +77,8 @@ const META: Record<Measure['key'], { label: string; actualKind: ValueKind; targe
   opex: { label: 'Operating Expenses', actualKind: 'pct', targetKind: 'pct', higherIsBetter: false, basis: 'Rolling-12 operating expenses (including management labor) as a % of revenue.' },
   salary_cap: { label: 'Salary Cap', actualKind: 'money', targetKind: 'money', higherIsBetter: true, basis: 'Labor you can afford at the target profit, minus actual labor including the owner-pay adjustment. Positive = under the cap.' },
   dso: { label: 'A/R DSO', actualKind: 'days', targetKind: 'days', higherIsBetter: false, basis: 'Receivables ÷ average daily sales over the measurement window.' },
-  core_capital: { label: 'Core Capital', actualKind: 'money', targetKind: 'money', higherIsBetter: true, basis: 'Cash minus line-of-credit balance, compared with the reserve target.' },
-  labor: { label: 'Labor Efficiency', actualKind: 'ratio', targetKind: 'ratio', higherIsBetter: true, basis: 'Rolling-12 gross profit ÷ direct labor (direct LER).' },
+  core_capital: { label: 'Operating Reserve', actualKind: 'money', targetKind: 'money', higherIsBetter: true, basis: 'Cash minus line-of-credit balance, compared with the reserve target.' },
+  labor: { label: 'Labor Yield Ratio', actualKind: 'ratio', targetKind: 'ratio', higherIsBetter: true, basis: 'Rolling-12 gross profit ÷ direct labor (direct LYR).' },
 };
 
 export function buildScorecard(months: MonthData[], idx: number, s: Settings): Scorecard | null {

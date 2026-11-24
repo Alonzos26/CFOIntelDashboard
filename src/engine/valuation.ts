@@ -1,4 +1,4 @@
-// Economic value, from Greg Crabtree, "Simple Numbers, Straight Talk, Big Profits!", ch. 9.
+// Estimated business value, from Greg Crabtree, "Simple Numbers, Straight Talk, Big Profits!", ch. 9.
 // Blended method: the last three years of pretax profit plus equity (assets minus liabilities). It blends earning capacity with
 // how well the business is capitalized. Rules of thumb (multiples of EBITDA or sales) are shown only for comparison.
 // This is a management estimate, never an appraisal.
@@ -13,9 +13,9 @@ export interface ValuationBase {
 export type ElementKey = 'customers' | 'employees' | 'processes' | 'core_capital' | 'intellectual_property';
 export const VALUE_ELEMENTS: [ElementKey, string, string][] = [
   ['customers', 'Customers', 'How loyal customers are to the business rather than to one person in it.'],
-  ['employees', 'Employees', 'Whether the team and culture would stay and perform after the owner leaves. Labor efficiency is the main evidence.'],
+  ['employees', 'Employees', 'Whether the team and culture would stay and perform after the owner leaves. Labor yield is the main evidence.'],
   ['processes', 'Processes and know-how', 'Documented ways of doing the work faster, better or cheaper that are not protected by a patent, copyright or trademark.'],
-  ['core_capital', 'Core capital', 'Cash, receivables, inventory and equipment net of what is owed. A business stripped of capital needs new money straight after a sale.'],
+  ['core_capital', 'Operating reserve', 'Cash, receivables, inventory and equipment net of what is owed. A business stripped of capital needs new money straight after a sale.'],
   ['intellectual_property', 'Intellectual property', 'Anything patented, copyrighted or trademarked. Development cost carried as an asset is worth nothing unless someone outside would pay for it.'],
 ];
 export interface ValuationInput {
@@ -78,7 +78,7 @@ export function valuation(b: ValuationBase, i: ValuationInput): ValuationResult 
   if (estimated) flags.push({ severity: 'warn', text: `Only ${b.monthsUsed} months of history are imported, so three years of profit is estimated from the monthly average. Import three full years before relying on this.` });
   if (method === 'net_assets') flags.push({ severity: 'warn', text: `The business has not produced pretax profit over the period, so profit adds nothing to value. What is left is net assets of ${$(equity)}${equity < 0 ? ' — negative, meaning an owner would be paying someone to take the business over' : ''}. Selling as a going concern usually returns more than liquidating.` });
   if (!b.ownerWageApplied) flags.push({ severity: 'warn', text: 'No owner market-wage adjustment is applied to these months. If the owner is paid under or over market, profit and this value are distorted. Complete the owner wage plan first.' });
-  if (b.coreCapitalSurplusCents !== null && b.coreCapitalSurplusCents < 0) flags.push({ severity: 'warn', text: `Core capital is ${$(-b.coreCapitalSurplusCents)} short of its target. The method assumes a fully capitalized business; a buyer would need to put that money in, and a seller who strips cash and receivables before closing leaves a damaged business.` });
+  if (b.coreCapitalSurplusCents !== null && b.coreCapitalSurplusCents < 0) flags.push({ severity: 'warn', text: `Operating reserve is ${$(-b.coreCapitalSurplusCents)} short of its target. The method assumes a fully capitalized business; a buyer would need to put that money in, and a seller who strips cash and receivables before closing leaves a damaged business.` });
   if (b.debtCents > 0) flags.push({ severity: 'info', text: `Debt of ${$(b.debtCents)} is already reflected through lower equity. Interest on it drags on profit, and a half-interest sale works best when the business is debt free.` });
   if (i.equityAdjustmentCents !== 0 && !i.equityAdjustmentNote.trim()) flags.push({ severity: 'warn', text: 'Equity has been adjusted without a reason recorded. State which asset or liability is over- or under-valued.' });
   const pct = `${(i.stakePct * 100).toFixed(0)}%`;
@@ -95,17 +95,17 @@ export function valuation(b: ValuationBase, i: ValuationInput): ValuationResult 
   return { available: true, method, threeYearPretaxCents: three, estimated, avgAnnualPretaxCents: avg, adjustedEquityCents: equity, valueCents: value, marketabilityDiscountCents: mAmt, controlDiscountCents: cAmt, discountedValueCents: discounted, stakeBasis: basis, stakePriceCents: stake, stakeIfWholeBusinessSoldCents: Math.round(value * i.stakePct), afterTaxAnnualCents: afterTax, note: { annualPaymentCents: pmt, totalPaymentsCents: pmt * i.noteYears, availableCents: afterTax, excessCents: excess, variance, status }, yearsToRepayWhole: yearsWhole, impliedEbitdaMultiple: value > 0 ? ratio(value, b.ebitda12Cents) : { value: null, reason: 'Not available.' }, impliedRevenueMultiple: value > 0 ? ratio(value, b.revenue12Cents) : { value: null, reason: 'Not available.' }, comparisons, flags };
 }
 
-// ---------- Value and distributions at different profit levels (the book's Company A / Company B comparison) ----------
+// ---------- Value and distributions at different profit tiers (the book's Company A / Company B comparison) ----------
 export interface ProfitLevelsInput {
   startEquityCents: number; revenueCents: number[]; levels: number[]; taxRate: number; coreCapitalMonths: number;
-  /** Profit distributions begin in this year; before it, profit stays in to build core capital. */
+  /** Profit distributions begin in this year; before it, profit stays in to build operating reserve. */
   firstProfitDistributionYear: number; marketabilityDiscount: number; controlDiscount: number;
 }
 export interface ProfitLevelYear { year: number; revenueCents: number; pretaxCents: number; taxDistributionCents: number; profitDistributionCents: number; totalDistributionsCents: number; equityCents: number; coreCapitalTargetCents: number; returnOnInvestment: Ratio; valueCents: number; discountedValueCents: number }
 export interface ProfitLevelResult { level: number; years: ProfitLevelYear[]; totalProfitDistributionsCents: number; totalTaxDistributionsCents: number; endingValueCents: number; yearCoreCapitalReached: number | null }
 /**
  * Rules, as in the book's illustration: tax distributions are the tax rate times the previous year's pretax profit; profit distributions
- * are whatever equity stood above the core capital target at the end of the previous year; the core capital target is N months of
+ * are whatever equity stood above the operating reserve target at the end of the previous year; the operating reserve target is N months of
  * total costs (revenue less pretax profit); value each year is three times the average of up to the last three years' profit, plus equity.
  * Owners are assumed to draw a market wage throughout, so profit here is true profit.
  */

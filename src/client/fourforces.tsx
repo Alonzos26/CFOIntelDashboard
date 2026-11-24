@@ -1,4 +1,4 @@
-// Four forces of cash flow: taxes → debt → core capital → distributions, plus "where did the cash go?".
+// Cash Flow Waterfall: taxes → debt → operating reserve → distributions, plus "where did the cash go?".
 import React, { useState } from 'react';
 import { get, put } from './api.ts';
 import { useT } from './App.tsx';
@@ -7,13 +7,13 @@ import { fmtMoney, fmtPct } from '../engine/core.ts';
 
 export function FourForcesCard() {
   const t = useT(); const r = useLoad(() => get(`${t.base}/four-forces`), [t.tid]); const [paid, setPaid] = useState<number | null>(null); const [proj, setProj] = useState<number | null | undefined>(undefined); const [err, setErr] = useState<string | null>(null);
-  return <Card title="Four forces of cash flow" right={r.data?.available ? <StatusPill status={r.data.status} /> : null}>
+  return <Card title="Cash Flow Waterfall" right={r.data?.available ? <StatusPill status={r.data.status} /> : null}>
     <Async r={r}>{(d) => { if (!d.available) return <p className="muted">{d.reason}</p>;
       const f = d.forces; const max = Math.max(f.cashCents, 1);
       const save = async () => { setErr(null); try { await put(`${t.base}/four-forces/taxes-paid`, { fiscalYear: Number(d.fiscalYear), cents: paid ?? d.taxesPaidCents, ...(proj !== undefined ? { projectedCents: proj } : {}) }); setPaid(null); setProj(undefined); r.reload(); } catch (e) { setErr((e as Error).message); } };
       return <>
         <p className="meta">Cash on hand at the end of <b>{P(d.asOf)}</b>, committed in order. Year to date from {P(d.ytdFrom)}{!d.ytdComplete && ' (some months missing)'}.</p>
-        <div className="tbl-wrap"><table className="tbl forces"><thead><tr><th>Force</th><th></th><th className="num">Needed</th><th className="num">Covered by cash</th><th className="num">Cash left after</th><th style={{ width: '22%' }}></th></tr></thead><tbody>
+        <div className="tbl-wrap"><table className="tbl forces"><thead><tr><th>Step</th><th></th><th className="num">Needed</th><th className="num">Covered by cash</th><th className="num">Cash left after</th><th style={{ width: '22%' }}></th></tr></thead><tbody>
           <tr className="tot"><td></td><td>Cash on hand</td><td></td><td></td><td className="num">{fmtMoney(f.cashCents)}</td><td><i className="fbar"><b style={{ width: '100%' }} /></i></td></tr>
           {f.steps.map((s: any) => <tr key={s.key} className={s.force === 4 ? 'tot strong' : ''}><td>{s.force === 4 ? '4' : s.key === 'debt' ? '' : s.force}</td><td>{s.label}<span className="sub">{s.note}</span></td>
             <td className="num">{s.force === 4 ? '' : fmtMoney(s.needCents)}</td><td className="num">{s.force === 4 ? '' : <>{fmtMoney(s.fundedCents)}{s.shortCents > 0 && <span className="sub bad">{fmtMoney(s.shortCents)} short</span>}</>}</td>
@@ -37,7 +37,7 @@ export function FourForcesCard() {
             {t.can('adjust') && (paid !== null || proj !== undefined) && <div className="row"><button className="btn btn-primary btn-sm" onClick={save}>Save tax figures</button></div>}<ErrorNote error={err} />
             <p className="muted small">Move the set-aside to a separate account each quarter, whenever it is actually due. The rate is a planning assumption set in Client Settings, and the date is the usual federal schedule for individuals — the tax preparer determines what is owed and when.</p></div>
         </div>
-        <p className="muted small">Order of claims on cash: taxes, then debt, then the core capital target ({d.coreCapitalBasis}, with nothing drawn on the line of credit), then profit distributions. Owner salary is not a distribution — it is pay for work and is already in labor cost.</p>
+        <p className="muted small">Order of claims on cash: taxes, then debt, then the operating reserve target ({d.coreCapitalBasis}, with nothing drawn on the line of credit), then profit distributions. Owner salary is not a distribution — it is pay for work and is already in labor cost.</p>
       </>; }}</Async>
   </Card>;
 }

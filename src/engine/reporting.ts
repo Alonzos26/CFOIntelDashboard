@@ -1,6 +1,6 @@
 // Reporting rhythms from Greg Crabtree, "Simple Numbers, Straight Talk, Big Profits!", ch. 8:
-// weekly sales and productivity report (labor efficiency by week / month to date / year to date), the rolling-twelve P&L
-// with pretax target, salary cap and labor-efficiency target, checks on the five operating-expense categories,
+// weekly sales and productivity report (labor yield by week / month to date / year to date), the rolling-twelve P&L
+// with pretax target, salary cap and labor-yield target, checks on the five operating-expense categories,
 // and whether monthly reports arrive by the agreed day of the month.
 import { type MonthData, type Ratio, type Settings, type WindowResult, fmtMoney, fmtPct, periodLabel, ratio, trailing } from './core.ts';
 import { addDays, toDay } from './cash.ts';
@@ -11,7 +11,7 @@ export interface ProdRow {
   kind: 'month' | 'week' | 'month_total'; label: string; key: string;
   gpPct: Ratio; salesCents: number; gpCents: number; laborCents: number | null;
   weekLER: Ratio | null; mtdLER: Ratio; ytdLER: Ratio;
-  /** Payroll that this row's gross profit supports at the target labor efficiency, and how far actual payroll is over (+) or under (−) it. */
+  /** Payroll that this row's gross profit supports at the target labor yield, and how far actual payroll is over (+) or under (−) it. */
   supportedLaborCents: number | null; laborOverUnderCents: number | null;
 }
 export interface Productivity { fiscalYearStart: string; rows: ProdRow[]; targetLER: number | null; weeksMissingLabor: number }
@@ -49,7 +49,7 @@ export function salesProductivity(months: MonthData[], weeks: ProdWeek[], s: Set
   }
   return { fiscalYearStart: fy, rows, targetLER, weeksMissingLabor: missing };
 }
-/** Labor efficiency (gross profit per payroll dollar as paid) at which the window would have hit the pretax target. Null when the cap leaves no room for payroll. */
+/** Labor yield (gross profit per payroll dollar as paid) at which the window would have hit the pretax target. Null when the cap leaves no room for payroll. */
 export function wagesLerTarget(w: WindowResult): number | null {
   const wages = w.directLaborCost + w.mgmtLaborCost; const cap = w.salaryCap - w.ownerAdj - (w.totalLabor - wages);
   return cap > 0 && w.grossProfit > 0 ? w.grossProfit / cap : null;
@@ -132,7 +132,7 @@ export interface Rolling3 { period: string; from: string; lastYearAvailable: boo
 const R3_DEFS: { key: Exclude<RecentKey, 'sales'>; label: string; kind: 'pct' | 'ratio'; margin: number; higherIsBetter: boolean; get: (w: WindowResult) => number | null }[] = [
   { key: 'profitability', label: 'True pretax profit', kind: 'pct', margin: 0.02, higherIsBetter: true, get: (w) => w.adjustedPretaxPct.value },
   { key: 'gross_profit', label: 'Gross profit before labor', kind: 'pct', margin: 0.02, higherIsBetter: true, get: (w) => w.grossMarginPct.value },
-  { key: 'labor', label: 'Labor efficiency', kind: 'ratio', margin: 0.15, higherIsBetter: true, get: (w) => w.adjustedLER.value },
+  { key: 'labor', label: 'Labor yield', kind: 'ratio', margin: 0.15, higherIsBetter: true, get: (w) => w.adjustedLER.value },
   { key: 'opex', label: 'Operating expenses', kind: 'pct', margin: 0.02, higherIsBetter: false, get: (w) => w.opexPct.value },
 ];
 export const SALES_MARGIN = 0.05;
@@ -140,8 +140,8 @@ export const SALES_MARGIN = 0.05;
 export function rolling3(months: MonthData[], idx: number, s: Settings): Rolling3 | null {
   if (idx < 11 || idx >= months.length) return null; const r3 = trailing(months, idx, 3, s)!; const r12 = trailing(months, idx, 12, s)!; if (!r3.complete || !r12.complete) return null;
   const ly = idx >= 14 ? trailing(months, idx - 12, 3, s) : null; const f = (v: number | null, kind: string) => (v === null ? 'n/a' : kind === 'pct' ? fmtPct(v) : kind === 'ratio' ? `${v.toFixed(2)}x` : fmtMoney(v));
-  // Labor efficiency follows the scorecard: gross profit per dollar of direct labor where the business has direct labor, all labor otherwise.
-  const direct = r12.dLER.value !== null && r3.dLER.value !== null; const defs = R3_DEFS.map((d) => (d.key === 'labor' ? { ...d, label: direct ? 'Labor efficiency (direct labor)' : 'Labor efficiency (all labor)', get: (w: WindowResult) => (direct ? w.dLER.value : w.adjustedLER.value) } : d));
+  // Labor yield follows the scorecard: gross profit per dollar of direct labor where the business has direct labor, all labor otherwise.
+  const direct = r12.dLER.value !== null && r3.dLER.value !== null; const defs = R3_DEFS.map((d) => (d.key === 'labor' ? { ...d, label: direct ? 'Labor yield (direct labor)' : 'Labor yield (all labor)', get: (w: WindowResult) => (direct ? w.dLER.value : w.adjustedLER.value) } : d));
   const signals: RecentSignal[] = defs.map((d) => {
     const a = d.get(r3), b = d.get(r12), c = ly ? d.get(ly) : null; const sign = d.higherIsBetter ? 1 : -1; let status: RecentStatus | null = null; let confirmed = false;
     if (a !== null && b !== null) { const diff = (a - b) * sign;

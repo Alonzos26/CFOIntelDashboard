@@ -34,7 +34,7 @@ export interface HiringInputs {
   grossMarginPct: number | null;       // null = use baseline margin
   billRateCents: number | null;
   replacing: boolean; replacedMonthlyCostCents: number;
-  guardrailMinCashCents: number | null; // null = use core capital target
+  guardrailMinCashCents: number | null; // null = use operating reserve target
 }
 
 export function defaultHiringInputs(startPeriod: string): HiringInputs {

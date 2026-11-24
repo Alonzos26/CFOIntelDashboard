@@ -126,7 +126,7 @@ test('Workflow 3: client builds a hiring scenario, changes pay and revenue, resu
   const s2 = await c.put(`${t}/scenarios/${s1.body.id}`, { inputs: { ...inputs, annualSalaryCents: 9_000_000, expectedMonthlyRevenueCents: 1_200_000 } });
   const r2 = s2.body.result;
   assert.ok(r2.cost.monthlyLoadedCents > r1.cost.monthlyLoadedCents, 'higher pay raises cost'); assert.ok(r2.scenario.pretax < r1.scenario.pretax, 'profit falls');
-  assert.ok(r2.scenario.minCash < r1.scenario.minCash, 'cash falls'); assert.ok(r2.scenario.dLER.value < r1.scenario.dLER.value, 'labor efficiency falls');
+  assert.ok(r2.scenario.minCash < r1.scenario.minCash, 'cash falls'); assert.ok(r2.scenario.dLER.value < r1.scenario.dLER.value, 'labor yield falls');
   const reopened = await c.get(`${t}/scenarios/${s1.body.id}`); assert.equal(reopened.body.inputs.annualSalaryCents, 9_000_000); assert.deepEqual(reopened.body.result.scenario, r2.scenario);
   const dup = await c.post(`${t}/scenarios/${s1.body.id}/duplicate`); assert.match(dup.body.name, /\(copy\)/);
   assert.equal((await c.post(`${t}/scenarios/${s1.body.id}/status`, { status: 'approved' })).status, 403, 'clients cannot approve their own scenario');
@@ -282,7 +282,7 @@ test('owner market-wage plan: advisor saves, approves and applies it; it drives 
   const seen = (await owner.get(`${t}/owner-wage`)).body.plans; assert.equal(seen.length, 1); assert.equal(seen[0].status, 'approved');
 });
 
-test('four forces view: built from the client\'s own cash, profit, debt and core capital; taxes paid reduce the set-aside', async () => {
+test('Cash Flow Waterfall view: built from the client\'s own cash, profit, debt and operating reserve; taxes paid reduce the set-aside', async () => {
   const adv = await login('advisor@sjats.demo'); const owner = await login('owner@cedarridge.demo'); const t = `/api/t/${T.cedar}`;
   const v = (await adv.get(`${t}/four-forces`)).body; assert.equal(v.available, true); assert.equal(v.forces.steps.length, 5); assert.equal(v.taxRate, 0.4);
   const fin = (await adv.get(`${t}/financials`)).body.months; assert.equal(v.forces.cashCents, fin.at(-1).bs.cash);
@@ -357,12 +357,12 @@ test('P&L drill-down, accounting-basis flag and valuation scenario', async () =>
   assert.equal((await adv.put(`${t}/imports/${pnl.id}/basis`, { basis: 'cash' })).status, 200); const b2 = (await adv.get(`${t}/financials`)).body.basis; assert.ok(['cash', 'mixed'].includes(b2.value)); assert.match(b2.text, /cash/);
   await adv.put(`${t}/imports/${pnl.id}/basis`, { basis: 'accrual' });
   // Valuation: base figures come from the server even if the request tries to supply them.
-  const vb = fin.valuationBase; const v = await adv.post(`${t}/scenarios`, { type: 'valuation', name: 'Economic value', inputs: { stakePct: 0.5, taxRate: 0.4, ebitdaMultiple: 5, revenueMultiple: 1, equityAdjustmentCents: -1_000_000, equityAdjustmentNote: 'Old receivable not collectible', pretaxCents: 999_999_999_00, elements: { customers: { rating: 'strong', note: 'Repeat work' }, bogus: { rating: 'strong', note: 'x' } } } });
+  const vb = fin.valuationBase; const v = await adv.post(`${t}/scenarios`, { type: 'valuation', name: 'Estimated business value', inputs: { stakePct: 0.5, taxRate: 0.4, ebitdaMultiple: 5, revenueMultiple: 1, equityAdjustmentCents: -1_000_000, equityAdjustmentNote: 'Old receivable not collectible', pretaxCents: 999_999_999_00, elements: { customers: { rating: 'strong', note: 'Repeat work' }, bogus: { rating: 'strong', note: 'x' } } } });
   assert.equal(v.status, 200, JSON.stringify(v.body)); const r = v.body.result; assert.equal(r.adjustedEquityCents, vb.equityCents - 1_000_000); assert.equal(r.base.pretaxCents, vb.pretaxCents); assert.equal(r.valueCents, r.method === 'blended' ? r.threeYearPretaxCents + r.adjustedEquityCents : r.adjustedEquityCents); assert.deepEqual(Object.keys(v.body.inputs.elements), ['customers']);
   assert.equal((await adv.post(`${t}/scenarios`, { type: 'valuation', name: 'x', inputs: { stakePct: 0 } })).status, 400); assert.equal((await adv.post(`${t}/scenarios`, { type: 'valuation', name: 'x', inputs: { elements: { customers: { rating: 'superb' } } } })).status, 400);
   assert.equal(r.discountedValueCents, r.valueCents - r.marketabilityDiscountCents - r.controlDiscountCents); assert.equal(v.body.inputs.noteYears, 5); assert.equal((await adv.post(`${t}/scenarios`, { type: 'valuation', name: 'x', inputs: { marketabilityDiscount: 0.9 } })).status, 400);
   assert.equal((await other.get(`${t}/scenarios/${v.body.id}`)).status, 404);
-  const pl = await owner.post(`${t}/scenarios`, { type: 'profit_levels', name: 'Profit levels', inputs: { startEquityCents: 5_000_000, revenueCents: [105_000_000, 192_000_000, 207_000_000, 285_000_000, 300_000_000], levels: [0.05, 0.1, 0.15], taxRate: 0.4, coreCapitalMonths: 2 } });
+  const pl = await owner.post(`${t}/scenarios`, { type: 'profit_levels', name: 'Profit tiers', inputs: { startEquityCents: 5_000_000, revenueCents: [105_000_000, 192_000_000, 207_000_000, 285_000_000, 300_000_000], levels: [0.05, 0.1, 0.15], taxRate: 0.4, coreCapitalMonths: 2 } });
   assert.equal(pl.status, 200, JSON.stringify(pl.body)); assert.deepEqual(pl.body.result.map((x: any) => x.endingValueCents), [83_270_000, 140_550_000, 187_075_000]);
   assert.equal((await owner.post(`${t}/scenarios`, { type: 'profit_levels', name: 'x', inputs: { revenueCents: [], levels: [0.1] } })).status, 400); assert.equal((await owner.post(`${t}/scenarios`, { type: 'profit_levels', name: 'x', inputs: { revenueCents: [1], levels: [5] } })).status, 400);
 });

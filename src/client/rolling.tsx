@@ -37,7 +37,7 @@ export function RollingTab({ rows, checks, recent }: { rows: any[]; checks: any[
       {hasPtb && line(dl('Payroll taxes & benefits', 'payroll_taxes_benefits'), (r) => $(r.payrollTaxesBenefits))}{line(dl('Other operating expenses', 'other_opex'), (r) => $(r.otherOpex))}{rows.some((r) => r.otherNet !== 0) && line(dl('Other income, depreciation, interest', 'other_net'), (r) => $(r.otherNet))}
       {line('True pretax profit', (r) => <b>{$(r.pretax)}</b>, 'tot', (r) => r.pretax < 0)}{line('as % of revenue', (r) => fmtPct(r.pretaxPct.value), 'sub-row')}
       {line(`Pretax profit target`, (r) => $(r.targetCents))}{line('Above (below) target', (r) => $(r.aboveBelowCents), '', (r) => r.aboveBelowCents < 0)}
-      {line('Salary cap', (r) => $(r.salaryCap), 'tot')}{line('Labor efficiency (gross profit ÷ labor)', (r) => R(r.ler))}{line('Labor efficiency needed for target', (r) => R(r.lerTarget))}
+      {line('Salary cap', (r) => $(r.salaryCap), 'tot')}{line('Labor yield (gross profit ÷ labor)', (r) => R(r.ler))}{line('Labor yield needed for target', (r) => R(r.lerTarget))}
     </tbody></table></div>
       {drill && <LineDrill line={drill} to={last.period} periods={rows.map((r) => r.period)} onClose={() => setDrill(null)} />}
       <p className="muted small">Select an underlined line to see the accounts behind it. Above (below) target is also the amount labor is under (over) the salary cap: closing a shortfall means that much less labor, or that much more gross profit from the same labor.</p></Card>
@@ -49,7 +49,7 @@ export function RollingTab({ rows, checks, recent }: { rows: any[]; checks: any[
           <div className="stat-grid"><div><span>Additional gross profit needed</span><b>{fmtMoney(last.additionalGpForStretchCents)}</b><small>With costs and labor held where they are</small></div>
             <div><span>Productivity increase required</span><b>{fmtPct(last.productivityIncrease.value)}</b><small>More gross profit from the same staff</small></div></div>
           <p className="muted small">Getting this from productivity is usually more realistic than cutting the same percentage out of operating expenses. The stretch level is set in Client Settings.</p></>}
-        <table className="tbl"><tbody><tr><td>True pretax profit, 12 months</td><td className="num">{fmtMoney(last.pretax)} · {fmtPct(last.pretaxPct.value)}</td></tr><tr><td>Labor efficiency now / needed for target</td><td className="num">{R(last.ler)} / {R(last.lerTarget)}</td></tr></tbody></table>
+        <table className="tbl"><tbody><tr><td>True pretax profit, 12 months</td><td className="num">{fmtMoney(last.pretax)} · {fmtPct(last.pretaxPct.value)}</td></tr><tr><td>Labor yield now / needed for target</td><td className="num">{R(last.ler)} / {R(last.lerTarget)}</td></tr></tbody></table>
         {last.lerTarget.reason && <p className="muted small">{last.lerTarget.reason}</p>}</Card>
     </div>
     {checks.length > 0 && <Card title="Operating expense categories — what to look at">
@@ -68,8 +68,8 @@ export function ProductivityCard({ p }: { p: any }) {
         <td className="num">{fmtPct(r.gpPct.value)}</td><td className="num">{fmtMoney(r.salesCents)}</td><td className="num">{fmtMoney(r.gpCents)}</td><td className="num">{r.laborCents === null ? <span className="muted">not entered</span> : fmtMoney(r.laborCents)}</td>
         {hasTarget && <td className="num">{fmtMoney(r.supportedLaborCents)}</td>}{hasTarget && <td className={`num ${r.laborOverUnderCents > 0 ? 'bad' : ''}`}>{r.laborOverUnderCents === null ? '—' : fmtMoney(r.laborOverUnderCents)}</td>}
         <td className="num">{r.weekLER ? R(r.weekLER) : ''}</td><td className="num">{R(r.mtdLER)}</td><td className="num"><b>{R(r.ytdLER)}</b></td></tr>)}</tbody></table></div>
-    {p.weeksMissingLabor > 0 && <Note tone="warn">{p.weeksMissingLabor} week(s) have no office and management payroll entered, so all-labor efficiency is shown as N/A for them rather than overstated from direct labor alone. Add it under "Enter weekly figures".</Note>}
-    <p className="muted small">Closed months come from the accounting P&amp;L; the open month comes from weekly entries. Payroll here is wages as paid for everyone, without payroll taxes or the owner market-wage adjustment, so it runs higher than labor efficiency on the Scorecard. {hasTarget ? 'The target is the ratio at which the last twelve months would have met the pretax profit target. ' : 'A target appears once twelve months of history exist. '}One weak week may be an anomaly; a weak month to date is a trend to act on.</p>
+    {p.weeksMissingLabor > 0 && <Note tone="warn">{p.weeksMissingLabor} week(s) have no office and management payroll entered, so all-labor yield is shown as N/A for them rather than overstated from direct labor alone. Add it under "Enter weekly figures".</Note>}
+    <p className="muted small">Closed months come from the accounting P&amp;L; the open month comes from weekly entries. Payroll here is wages as paid for everyone, without payroll taxes or the owner market-wage adjustment, so it runs higher than labor yield on the Scorecard. {hasTarget ? 'The target is the ratio at which the last twelve months would have met the pretax profit target. ' : 'A target appears once twelve months of history exist. '}One weak week may be an anomaly; a weak month to date is a trend to act on.</p>
   </Card>;
 }
 

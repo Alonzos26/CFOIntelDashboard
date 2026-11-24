@@ -1,5 +1,5 @@
-// Four forces of cash flow (concept from Greg Crabtree, "Simple Numbers, Straight Talk, Big Profits!", ch. 4–5):
-// cash is committed in a fixed order — 1. taxes, 2. debt, 3. core capital target, 4. profit distributions —
+// Cash Flow Waterfall (concept from Greg Crabtree, "Simple Numbers, Straight Talk, Big Profits!", ch. 4–5):
+// cash is committed in a fixed order — 1. taxes, 2. debt, 3. operating reserve target, 4. profit distributions —
 // and distributions come only from what is left. Also the "where did the cash go?" walk from beginning cash to ending cash.
 import { type MonthData, cashFlowMonth } from './core.ts';
 
@@ -27,20 +27,20 @@ export function fourForces(i: FourForcesInput): FourForces {
     { force: 1, key: 'taxes', label: 'Taxes set aside', needCents: taxNeed, note: projected !== null
       ? `Projected tax for the year from tax planning of ${$(projected)}, less ${$(i.taxesPaidYtdCents)} already paid or distributed for tax. The full projection is reserved, not just the share earned so far.`
       : `${Math.round(i.taxRate * 100)}% of year-to-date pretax profit of ${$(i.pretaxYtdCents)}, less ${$(i.taxesPaidYtdCents)} already paid or distributed for tax.` },
-    { force: 2, key: 'loc', label: 'Pay the line of credit to zero', needCents: Math.max(0, i.locCents), note: 'Core capital means cash in the bank with nothing drawn on the line.' },
+    { force: 2, key: 'loc', label: 'Pay the line of credit to zero', needCents: Math.max(0, i.locCents), note: 'Operating reserve means cash in the bank with nothing drawn on the line.' },
     { force: 2, key: 'debt', label: 'Scheduled loan payments', needCents: Math.max(0, i.scheduledDebtCents), note: 'Term-debt payments due in the next 13 weeks, from the cash plan.' },
-    { force: 3, key: 'core', label: 'Core capital target', needCents: Math.max(0, i.coreCapitalTargetCents), note: 'The cash cushion that stays in the business.' },
+    { force: 3, key: 'core', label: 'Operating reserve target', needCents: Math.max(0, i.coreCapitalTargetCents), note: 'The cash cushion that stays in the business.' },
   ];
   let remaining = i.cashCents; let short = 0;
   const steps: ForceStep[] = needs.map((n) => { const funded = Math.min(Math.max(remaining, 0), n.needCents); remaining -= n.needCents; short += n.needCents - funded; return { ...n, fundedCents: funded, shortCents: n.needCents - funded, remainingCents: remaining }; });
   const available = Math.max(0, remaining);
-  steps.push({ force: 4, key: 'distributions', label: 'Available for profit distributions', needCents: 0, fundedCents: available, shortCents: 0, remainingCents: remaining, note: 'What is left after the first three forces. Zero until they are funded.' });
+  steps.push({ force: 4, key: 'distributions', label: 'Available for profit distributions', needCents: 0, fundedCents: available, shortCents: 0, remainingCents: remaining, note: 'What is left after the first three steps. Zero until they are funded.' });
   const retained = i.avgMonthlyPretaxCents * (1 - i.taxRate);
   const flags: FourForces['flags'] = [];
   if (steps[0].shortCents > 0) flags.push({ severity: 'warn', text: `Cash on hand does not cover the tax set-aside: ${$(steps[0].shortCents)} short. Taxes are the first claim on cash.` });
-  if (i.locCents > 0) flags.push({ severity: 'warn', text: `${$(i.locCents)} is drawn on the line of credit. The core capital target is not met until the line is at zero.` });
-  if (short > 0 && i.distributionsYtdCents !== null && i.distributionsYtdCents > 0) flags.push({ severity: 'warn', text: `${$(i.distributionsYtdCents)} of distributions have been taken this year while taxes, debt and core capital are ${$(short)} short of being funded. Beyond what is needed for the owners' taxes, distributions come last.` });
-  if (short === 0) flags.push({ severity: 'good', text: `Taxes, debt and core capital are funded. ${$(available)} is available for profit distributions.` });
+  if (i.locCents > 0) flags.push({ severity: 'warn', text: `${$(i.locCents)} is drawn on the line of credit. The operating reserve target is not met until the line is at zero.` });
+  if (short > 0 && i.distributionsYtdCents !== null && i.distributionsYtdCents > 0) flags.push({ severity: 'warn', text: `${$(i.distributionsYtdCents)} of distributions have been taken this year while taxes, debt and operating reserve are ${$(short)} short of being funded. Beyond what is needed for the owners' taxes, distributions come last.` });
+  if (short === 0) flags.push({ severity: 'good', text: `Taxes, debt and operating reserve are funded. ${$(available)} is available for profit distributions.` });
   return { cashCents: i.cashCents, steps, taxReserveNeededCents: taxNeed, availableForDistributionCents: available, shortfallCents: short, monthsOfProfitToFund: short > 0 && retained > 0 ? short / retained : null, flags };
 }
 

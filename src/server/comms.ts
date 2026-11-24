@@ -62,7 +62,7 @@ export function packetPdf(g: Gathered, preparedBy: string, today = new Date().to
   f.table(cols('', [P, 'Year to date', r12Label]), [
     { cells: ['Sales', ...w.map((x) => $(x.lines.revenue))] }, { cells: ['Gross profit before labor', ...w.map((x) => $(x.grossProfit))] }, { cells: ['  as % of sales', ...w.map((x) => pc(x.grossMarginPct))], gray: 0.4 },
     { cells: ['True pretax profit', ...w.map((x) => $(x.adjustedPretax))], bold: true }, { cells: ['  as % of sales', ...w.map((x) => pc(x.adjustedPretaxPct))], gray: 0.4 },
-    ...(g.months[g.idx].bs ? [{ cells: ['Cash at month end', $(g.months[g.idx].bs!.cash), '', ''] }] : []), ...(g.coreCapital.available !== null ? [{ cells: ['Core capital / target', `${$(g.coreCapital.available)} / ${$(g.coreCapital.target)}`, '', ''] }] : []) ]);
+    ...(g.months[g.idx].bs ? [{ cells: ['Cash at month end', $(g.months[g.idx].bs!.cash), '', ''] }] : []), ...(g.coreCapital.available !== null ? [{ cells: ['Operating reserve / target', `${$(g.coreCapital.available)} / ${$(g.coreCapital.target)}`, '', ''] }] : []) ]);
   f.para('True pretax profit is profit before income tax after paying the owner a market-rate wage for the work they do.', { size: 8.5, gray: 0.4 });
   f.heading('What stood out'); g.highlights.forEach((h) => f.bullet(h));
   f.heading(`Scorecard · rolling 12 months to ${periodLabel(g.period)}`);

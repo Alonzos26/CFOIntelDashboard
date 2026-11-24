@@ -159,7 +159,7 @@ export function review(db: Db, tenantId: string, batchId: string): BatchReview |
           if (Math.abs(pretax - s.control_pretax) > 100) mismatch.push(`${periodLabel(p)}: mapped accounts give ${fmtMoney(pretax)}, the file's net income line says ${fmtMoney(s.control_pretax)} (difference ${fmtMoney(pretax - s.control_pretax)})`);
         }
       }
-      if (noRev.length) issues.push({ severity: 'warning', code: 'no_revenue', message: `${noRev.length} month(s) have expenses but no revenue. Margins and labor efficiency will show N/A for them.`, detail: noRev });
+      if (noRev.length) issues.push({ severity: 'warning', code: 'no_revenue', message: `${noRev.length} month(s) have expenses but no revenue. Margins and labor yield will show N/A for them.`, detail: noRev });
       if (mismatch.length) issues.push({ severity: 'error', code: 'control_total_mismatch', message: 'The mapped accounts do not reconcile to the net income line in the file. An account is probably missing, mapped twice, or mapped with the wrong sign.', detail: mismatch.slice(0, 24) });
     } else {
       const off: string[] = [];
@@ -167,7 +167,7 @@ export function review(db: Db, tenantId: string, batchId: string): BatchReview |
         const s = sums.get(p) ?? {}; const assets = BS_ASSET_LINES.reduce((a, k) => a + (s[k] ?? 0), 0); const le = BS_LIAB_EQUITY_LINES.reduce((a, k) => a + (s[k] ?? 0), 0);
         if (Math.abs(assets - le) > 100) off.push(`${periodLabel(p)}: assets ${fmtMoney(assets)} vs liabilities + equity ${fmtMoney(le)} (difference ${fmtMoney(assets - le)})`);
       }
-      if (off.length) issues.push({ severity: 'error', code: 'bs_out_of_balance', message: `The balance sheet does not balance in ${off.length} month(s). Cash and core capital figures cannot be trusted until it does.`, detail: off.slice(0, 24) });
+      if (off.length) issues.push({ severity: 'error', code: 'bs_out_of_balance', message: `The balance sheet does not balance in ${off.length} month(s). Cash and operating reserve figures cannot be trusted until it does.`, detail: off.slice(0, 24) });
     }
   }
   const hasErr = issues.some((i) => i.severity === 'error');

@@ -232,7 +232,7 @@ export interface CoreCapital {
   attainment: Ratio; monthsCovered: Ratio; basisLabel: string;
 }
 /**
- * Core capital (Simple Numbers-inspired): cash net of line-of-credit usage, compared with N months of
+ * Operating reserve (Simple Numbers-inspired): cash net of line-of-credit usage, compared with N months of
  * operating expenses + direct labor (+ non-labor COGS unless vendor terms cover it).
  */
 export function coreCapital(months: MonthData[], idx: number, s: Settings): CoreCapital {

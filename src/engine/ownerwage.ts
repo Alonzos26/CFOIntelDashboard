@@ -98,7 +98,7 @@ export function evaluateWagePlan(input: WagePlanInput, ctx: WageContext): WagePl
       ? `With owners at the full market wage of ${$(totalReasonable)}, rolling-12 labor is ${$(headroom)} under the salary cap: the business supports the market wage and still earns its ${pct} profit target.`
       : room > 0
         ? `With owners at the full market wage of ${$(totalReasonable)}, rolling-12 labor is ${$(-headroom)} over the salary cap. At today's revenue and other costs the cap leaves room for about ${$(room)} of owner wages while still earning the ${pct} profit target.`
-        : `With owners at the full market wage of ${$(totalReasonable)}, rolling-12 labor is ${$(-headroom)} over the salary cap. Labor other than the owners already uses the whole cap, so the ${pct} profit target has to come from more gross profit or better labor efficiency, not from holding owner pay down.`;
+        : `With owners at the full market wage of ${$(totalReasonable)}, rolling-12 labor is ${$(-headroom)} over the salary cap. Labor other than the owners already uses the whole cap, so the ${pct} profit target has to come from more gross profit or better labor yield, not from holding owner pay down.`;
   }
   return { owners, totalReasonableAnnualCents: totalReasonable, totalActualAnnualCents: totalActual, totalGapAnnualCents: totalGap, monthlyAdjustmentCents: Math.round(totalGap / 12), flags, affordability, documentationComplete };
 }
