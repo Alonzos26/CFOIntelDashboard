@@ -1,0 +1,9 @@
+node_modules/
+public/
+data/
+*.sqlite*
+.env
+# Never commit client workbooks or exports
+imports-private/
+*.xlsx
+!tests/fixtures/*.xlsx

@@ -1,0 +1,1379 @@
+{
+ "version": 2,
+ "note": "KPI packs loaded at startup. Add an industry by adding a block here (or in the app under KPI Library). Existing definitions edited in the app are never overwritten.",
+ "packs": [
+  {
+   "industry": "Construction",
+   "sources": [
+    "Guide: Contractor Budget (Contractor Quick Tools)",
+    "Brief (starter KPIs)"
+   ],
+   "kpis": [
+    {
+     "key": "gross_profit_per_job",
+     "name": "Gross profit per job",
+     "formula": "gross_profit / jobs_completed",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Average gross profit earned on each completed job.",
+     "recommendedAction": "Review estimating and change-order capture on the lowest-margin jobs.",
+     "dataSource": "Management P&L; job count from project tracking",
+     "benchmarkNote": null
+    },
+    {
+     "key": "revenue_per_field_hour",
+     "name": "Revenue per field labor hour",
+     "formula": "revenue / field_hours",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Sales produced for each hour of field labor.",
+     "recommendedAction": "Compare crews and job types; look for unbilled time.",
+     "dataSource": "Management P&L; field hours from payroll or timekeeping",
+     "benchmarkNote": null
+    },
+    {
+     "key": "change_order_share",
+     "name": "Change orders as % of revenue",
+     "formula": "change_order_revenue / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of revenue coming from approved change orders.",
+     "recommendedAction": "Confirm every scope change is priced and signed before work proceeds.",
+     "dataSource": "Project tracking",
+     "benchmarkNote": null
+    },
+    {
+     "key": "backlog_months",
+     "name": "Backlog (months of revenue)",
+     "formula": "backlog / revenue",
+     "unit": "number",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Signed work not yet completed, expressed as months of current revenue.",
+     "recommendedAction": "If backlog is thin, prioritize estimating and follow-up on open proposals.",
+     "dataSource": "Contract tracking; management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "job_cost_variance",
+     "name": "Actual vs estimated job cost",
+     "formula": "actual_job_cost / estimated_job_cost",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Actual cost of completed jobs relative to the estimate. Above 100% means jobs ran over.",
+     "recommendedAction": "Feed overruns back into the estimating templates.",
+     "dataSource": "Job costing",
+     "benchmarkNote": null
+    },
+    {
+     "key": "variable_expense_pct",
+     "name": "Variable (job) expenses as % of revenue",
+     "formula": "(cogs + direct_labor) / revenue",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Materials, subcontractors and field labor per dollar of revenue \u2014 the costs that decide whether jobs make money.",
+     "recommendedAction": "Hold the percentage on healthy work; where it slipped, look at supplier pricing, subcontractor agreements and incentive pay.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "fixed_expense_pct",
+     "name": "Fixed (overhead) expenses as % of revenue",
+     "formula": "operating_expenses / revenue",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Overhead per dollar of revenue.",
+     "recommendedAction": "Review overhead line by line: same, more or less than last year, and why.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "net_profit_margin",
+     "name": "Net profit margin",
+     "formula": "pretax_profit / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Pretax profit kept from each dollar of sales.",
+     "recommendedAction": "Work the levers in order: price, volume sold, variable costs, fixed costs.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": "Reference only, not a target: \"Contractor Budget\" (vendor guide, undated, not independently verified) cites a healthy contractor net profit of 10%\u201320%."
+    },
+    {
+     "key": "retainage_share",
+     "name": "Retainage as % of receivables",
+     "formula": "retainage_receivable / accounts_receivable",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Share of receivables held back until project completion.",
+     "recommendedAction": "Track release dates and close out punch lists promptly.",
+     "dataSource": "Project billing; balance sheet",
+     "benchmarkNote": null
+    }
+   ]
+  },
+  {
+   "industry": "Home Services \u2014 HVAC, Plumbing & Electrical",
+   "sources": [
+    "Sera: 4 Metrics That Matter Most to Your HVAC Business",
+    "7 Financial Strategies for Plumbing Companies",
+    "7 Financial Strategies for Electrical Contractors",
+    "Systems Blueprint by Profitable Tradie"
+   ],
+   "kpis": [
+    {
+     "key": "membership_target_attainment",
+     "name": "Memberships vs target",
+     "formula": "active_memberships / target_memberships",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Active maintenance memberships compared with the target.",
+     "recommendedAction": "Have technicians quote membership savings on every call.",
+     "dataSource": "Field management system",
+     "benchmarkNote": "Reference only, not a target: \"Sera 4 Metrics\" (vendor guide, undated, not independently verified) cites members generating up to 2.5\u00d7 the revenue of non-members."
+    },
+    {
+     "key": "memberships_per_million",
+     "name": "Memberships per $1M of annual revenue",
+     "formula": "active_memberships / (revenue * 12 / 1000000)",
+     "unit": "number",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Membership base relative to the size of the business (this month annualized).",
+     "recommendedAction": "Grow memberships to smooth seasonal cash flow.",
+     "dataSource": "Field management system; management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "technician_efficiency",
+     "name": "Technician efficiency (labor utilization)",
+     "formula": "billed_hours / paid_tech_hours",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Hours billed to customers relative to hours technicians were paid.",
+     "recommendedAction": "Review dispatching, travel time and parts runs.",
+     "dataSource": "Field management system; payroll",
+     "benchmarkNote": null
+    },
+    {
+     "key": "average_service_ticket",
+     "name": "Average ticket",
+     "formula": "revenue / jobs_completed",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Average revenue per completed job or service call.",
+     "recommendedAction": "Review pricing model and options presented on each call.",
+     "dataSource": "Management P&L; job count",
+     "benchmarkNote": null
+    },
+    {
+     "key": "revenue_per_technician",
+     "name": "Revenue per technician",
+     "formula": "revenue / technicians",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Sales produced per field technician.",
+     "recommendedAction": "Compare technicians; coach or re-route the lowest.",
+     "dataSource": "Management P&L; headcount",
+     "benchmarkNote": null
+    },
+    {
+     "key": "callback_rate",
+     "name": "Callback rate",
+     "formula": "callbacks / jobs_completed",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Share of jobs that needed an unpaid return visit.",
+     "recommendedAction": "Find the technicians and job types driving callbacks; they erase job margin.",
+     "dataSource": "Field management system",
+     "benchmarkNote": null
+    },
+    {
+     "key": "lead_conversion",
+     "name": "Lead-to-booked-job conversion",
+     "formula": "jobs_booked / leads",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of incoming leads that become booked jobs.",
+     "recommendedAction": "Review call handling and quote follow-up.",
+     "dataSource": "CRM / call tracking",
+     "benchmarkNote": null
+    },
+    {
+     "key": "job_gross_margin",
+     "name": "Gross margin on jobs",
+     "formula": "contribution_margin / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "What is left after materials and field labor, per dollar of sales.",
+     "recommendedAction": "Review job costing on the lowest-margin job types; use flat-rate pricing built from real costs.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "materials_pct",
+     "name": "Materials as % of revenue",
+     "formula": "cogs / revenue",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Material and other direct non-labor cost per dollar of sales.",
+     "recommendedAction": "Check that markups have kept up with supplier price increases.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "ebitda_margin",
+     "name": "EBITDA margin",
+     "formula": "ebitda / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Earnings before interest, taxes, depreciation and amortization per dollar of revenue.",
+     "recommendedAction": "Review efficiency and pricing if this trails your target.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": "Reference only, not a target: \"Sera 4 Metrics\" (vendor guide, undated, not independently verified) cites top-performing field service companies at EBITDA margins of 15% or more."
+    },
+    {
+     "key": "net_profit_margin",
+     "name": "Net profit margin",
+     "formula": "pretax_profit / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Pretax profit kept from each dollar of sales.",
+     "recommendedAction": "Work the levers in order: price, volume sold, variable costs, fixed costs.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": "Reference only, not a target: \"7 Financial Strategies for Plumbing Companies\" (vendor guide, undated, not independently verified) cites healthy plumbing companies targeting net profit of 15%\u201325%."
+    },
+    {
+     "key": "ar_days",
+     "name": "Accounts receivable days",
+     "formula": "accounts_receivable / revenue * period_days",
+     "unit": "days",
+     "direction": "lower",
+     "basis": "r12",
+     "description": "How many days of sales are still waiting to be collected.",
+     "recommendedAction": "Assign one owner for collections; follow up at 30, 60 and 90 days; take deposits or retainers.",
+     "dataSource": "Balance sheet; management P&L",
+     "benchmarkNote": null
+    }
+   ]
+  },
+  {
+   "industry": "Roofing & Exteriors",
+   "sources": [
+    "Master Roofing Owners Guide"
+   ],
+   "kpis": [
+    {
+     "key": "close_rate",
+     "name": "Close rate",
+     "formula": "jobs_sold / estimates_given",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of estimates that become signed jobs.",
+     "recommendedAction": "If leads are up but sales are not, the issue is closing \u2014 review the sales process and follow-up.",
+     "dataSource": "CRM",
+     "benchmarkNote": "Reference only, not a target: \"Master Roofing Owners Guide\" (vendor guide, undated, not independently verified) cites a 30% close rate described as low in its planning example."
+    },
+    {
+     "key": "average_ticket",
+     "name": "Average ticket",
+     "formula": "revenue / jobs_completed",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Average revenue per completed job.",
+     "recommendedAction": "Focus sales effort on replacements and commercial work; add gutters, siding or solar.",
+     "dataSource": "Management P&L; job count",
+     "benchmarkNote": null
+    },
+    {
+     "key": "average_job_margin",
+     "name": "Average job margin",
+     "formula": "gross_profit / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Gross profit per dollar of sales, before labor.",
+     "recommendedAction": "Monitor margins monthly; negotiate bulk material pricing before the busy season.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "estimate_rate",
+     "name": "Lead-to-estimate rate",
+     "formula": "estimates_given / leads",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of leads that reach an estimate.",
+     "recommendedAction": "Tighten lead response time and appointment setting.",
+     "dataSource": "CRM",
+     "benchmarkNote": null
+    },
+    {
+     "key": "cost_per_lead",
+     "name": "Cost per lead",
+     "formula": "marketing / leads",
+     "unit": "currency",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Marketing spend for each lead generated.",
+     "recommendedAction": "Shift budget toward the channels producing leads that close.",
+     "dataSource": "Management P&L; CRM",
+     "benchmarkNote": null
+    },
+    {
+     "key": "marketing_pct",
+     "name": "Marketing as % of revenue",
+     "formula": "marketing / revenue",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Marketing spend per dollar of sales.",
+     "recommendedAction": "Compare with growth achieved; pre-season campaigns should show up in leads.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "revenue_per_crew",
+     "name": "Revenue per crew",
+     "formula": "revenue / crews",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Sales produced per installation crew.",
+     "recommendedAction": "Check scheduling and crew capacity before hiring.",
+     "dataSource": "Management P&L; operations",
+     "benchmarkNote": null
+    },
+    {
+     "key": "jobs_needed_for_goal",
+     "name": "Sales goal attainment",
+     "formula": "revenue / monthly_revenue_goal",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Revenue for the month against the monthly goal set in the annual plan.",
+     "recommendedAction": "Work back from the goal: goal \u00f7 average ticket = jobs needed; jobs \u00f7 close rate = estimates needed.",
+     "dataSource": "Management P&L; annual plan",
+     "benchmarkNote": null
+    }
+   ]
+  },
+  {
+   "industry": "Legal",
+   "sources": [
+    "Law Firm Profit Leaks",
+    "Building Your All-Star Team: A Hiring Pipeline Blueprint for Law Firms (Crisp)",
+    "Brief (starter KPIs)"
+   ],
+   "kpis": [
+    {
+     "key": "billable_utilization",
+     "name": "Billable utilization",
+     "formula": "billable_hours / available_hours",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of available professional hours that were billable.",
+     "recommendedAction": "Rebalance workloads and review non-billable commitments.",
+     "dataSource": "Timekeeping system",
+     "benchmarkNote": null
+    },
+    {
+     "key": "billable_target_attainment",
+     "name": "Billed hours vs target",
+     "formula": "billable_hours / billable_hour_target",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Hours billed compared with the timekeepers' targets.",
+     "recommendedAction": "Set clear weekly and monthly targets; coach or reassign underperformers.",
+     "dataSource": "Timekeeping system",
+     "benchmarkNote": null
+    },
+    {
+     "key": "realization_rate",
+     "name": "Realization rate",
+     "formula": "billed_amount / standard_value",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Amount billed relative to the standard value of time worked.",
+     "recommendedAction": "Review write-downs by matter and fee arrangements.",
+     "dataSource": "Billing system",
+     "benchmarkNote": "Reference only, not a target: \"Law Firm Profit Leaks\" (vendor guide, undated, not independently verified) cites aiming for 90% of billed hours to reach invoices."
+    },
+    {
+     "key": "collection_rate",
+     "name": "Collection rate",
+     "formula": "collected_amount / billed_amount",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Cash collected relative to amounts billed. Excludes trust funds.",
+     "recommendedAction": "Assign one person to own collections; use evergreen retainers.",
+     "dataSource": "Billing system (operating account only \u2014 trust funds are never included)",
+     "benchmarkNote": null
+    },
+    {
+     "key": "ar_days",
+     "name": "Accounts receivable days",
+     "formula": "accounts_receivable / revenue * period_days",
+     "unit": "days",
+     "direction": "lower",
+     "basis": "r12",
+     "description": "How many days of sales are still waiting to be collected.",
+     "recommendedAction": "Assign one owner for collections; follow up at 30, 60 and 90 days; take deposits or retainers.",
+     "dataSource": "Balance sheet; management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "revenue_per_professional",
+     "name": "Revenue per professional",
+     "formula": "revenue / professionals",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Revenue for each fee-earning professional.",
+     "recommendedAction": "Compare with compensation and utilization.",
+     "dataSource": "Management P&L; headcount",
+     "benchmarkNote": null
+    },
+    {
+     "key": "cost_per_lead",
+     "name": "Cost per lead",
+     "formula": "marketing / leads",
+     "unit": "currency",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Marketing spend for each lead.",
+     "recommendedAction": "Track every lead source; move budget to the channels that convert.",
+     "dataSource": "Management P&L; CRM",
+     "benchmarkNote": null
+    },
+    {
+     "key": "cost_per_client",
+     "name": "Cost to acquire a client",
+     "formula": "marketing / new_clients",
+     "unit": "currency",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Marketing spend for each new client signed.",
+     "recommendedAction": "Follow up on no-shows and non-buyers.",
+     "dataSource": "Management P&L; CRM",
+     "benchmarkNote": null
+    },
+    {
+     "key": "payroll_pct",
+     "name": "Payroll as % of revenue",
+     "formula": "(total_labor + payroll_taxes_benefits) / revenue",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "All pay, taxes and benefits per dollar of revenue.",
+     "recommendedAction": "Compare with timekeeper output before adding non-billable roles.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "marketing_pct",
+     "name": "Marketing as % of revenue",
+     "formula": "marketing / revenue",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Marketing spend per dollar of revenue.",
+     "recommendedAction": "Cut spend that cannot be traced to signed clients.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "overhead_pct",
+     "name": "Overhead as % of revenue",
+     "formula": "(facilities + other_opex) / revenue",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Rent, software and other overhead per dollar of revenue.",
+     "recommendedAction": "Review subscriptions, seats and contracts every six months.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "net_profit_margin",
+     "name": "Net profit margin",
+     "formula": "pretax_profit / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Pretax profit kept from each dollar of sales.",
+     "recommendedAction": "Work the levers in order: price, volume sold, variable costs, fixed costs.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "team_turnover",
+     "name": "Team turnover",
+     "formula": "departures / average_headcount",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "r12",
+     "description": "Share of the team that left during the period.",
+     "recommendedAction": "Review hiring criteria and onboarding for the roles that churn.",
+     "dataSource": "HR records",
+     "benchmarkNote": null
+    },
+    {
+     "key": "time_to_fill",
+     "name": "Average days to fill a role",
+     "formula": "total_days_open / hires",
+     "unit": "days",
+     "direction": "lower",
+     "basis": "r12",
+     "description": "Average time from opening a role to an accepted offer.",
+     "recommendedAction": "Keep a standing pipeline for key roles.",
+     "dataSource": "HR records",
+     "benchmarkNote": null
+    }
+   ]
+  },
+  {
+   "industry": "Manufacturing",
+   "sources": [
+    "Brief (starter KPIs)"
+   ],
+   "kpis": [
+    {
+     "key": "scrap_rate",
+     "name": "Scrap and rework rate",
+     "formula": "scrap_cost / cogs",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Cost of scrap and rework as a share of direct costs.",
+     "recommendedAction": "Identify the products and steps generating the most scrap.",
+     "dataSource": "Production records",
+     "benchmarkNote": null
+    },
+    {
+     "key": "capacity_utilization",
+     "name": "Capacity utilization",
+     "formula": "machine_hours_used / machine_hours_available",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of available machine time in productive use.",
+     "recommendedAction": "Review scheduling and changeover time.",
+     "dataSource": "Production scheduling",
+     "benchmarkNote": null
+    },
+    {
+     "key": "throughput_per_hour",
+     "name": "Throughput per machine hour",
+     "formula": "units_produced / machine_hours_used",
+     "unit": "number",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Units produced for each machine hour.",
+     "recommendedAction": "Investigate bottleneck steps.",
+     "dataSource": "Production records",
+     "benchmarkNote": null
+    },
+    {
+     "key": "inventory_days",
+     "name": "Days in inventory",
+     "formula": "inventory / cogs * period_days",
+     "unit": "days",
+     "direction": "lower",
+     "basis": "month",
+     "description": "How long inventory sits before it is sold.",
+     "recommendedAction": "Reduce order quantities on slow-moving items.",
+     "dataSource": "Inventory count; management P&L",
+     "benchmarkNote": null
+    }
+   ]
+  },
+  {
+   "industry": "Medical & Med Spas",
+   "sources": [
+    "Med Spas Operations Profitability Playbook",
+    "Brief (starter KPIs)"
+   ],
+   "kpis": [
+    {
+     "key": "revenue_per_available_hour",
+     "name": "Revenue per available provider hour (RevPAH)",
+     "formula": "revenue / available_hours",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Revenue earned for each hour providers were available. Aggregate hours only \u2014 no patient information.",
+     "recommendedAction": "Fill open blocks; review the service mix by margin, time and demand.",
+     "dataSource": "Management P&L; scheduling system",
+     "benchmarkNote": "Reference only, not a target: \"Med Spa Operations Profitability Playbook\" (vendor guide, undated, not independently verified) cites a well-optimized med spa at $200\u2013$400 RevPAH depending on services and location."
+    },
+    {
+     "key": "client_lifetime_value",
+     "name": "Client lifetime value",
+     "formula": "cohort_revenue / cohort_clients",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Average revenue per client over their whole relationship, for a tracked group of clients.",
+     "recommendedAction": "Use memberships and maintenance plans to extend relationships.",
+     "dataSource": "Practice management system (aggregate totals only)",
+     "benchmarkNote": "Reference only, not a target: \"Med Spa Operations Profitability Playbook\" (vendor guide, undated, not independently verified) cites a healthy CLV of $2,000\u2013$5,000 for established practices."
+    },
+    {
+     "key": "treatment_completion_rate",
+     "name": "Treatment plan completion rate",
+     "formula": "completed_plans / recommended_plans",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of recommended treatment plans that clients complete.",
+     "recommendedAction": "Review the consultation process, pricing structure and follow-up.",
+     "dataSource": "Practice management system (aggregate counts only)",
+     "benchmarkNote": "Reference only, not a target: \"Med Spa Operations Profitability Playbook\" (vendor guide, undated, not independently verified) cites investigating when completion falls below 70%."
+    },
+    {
+     "key": "cost_per_acquisition",
+     "name": "Cost per new client",
+     "formula": "marketing / new_clients",
+     "unit": "currency",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Marketing spend for each new client.",
+     "recommendedAction": "Compare with first-year revenue per new client.",
+     "dataSource": "Management P&L; practice management system",
+     "benchmarkNote": "Reference only, not a target: \"Med Spa Operations Profitability Playbook\" (vendor guide, undated, not independently verified) cites acquisition cost of typically 10%\u201315% of a client's first-year revenue."
+    },
+    {
+     "key": "consultation_conversion",
+     "name": "Consultation-to-treatment conversion",
+     "formula": "treatments_booked / consultations",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of consultations that lead to a booked treatment.",
+     "recommendedAction": "Standardize the consultation and present options clearly.",
+     "dataSource": "Practice management system",
+     "benchmarkNote": null
+    },
+    {
+     "key": "membership_revenue_share",
+     "name": "Membership revenue share",
+     "formula": "membership_revenue / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of revenue that is recurring membership income.",
+     "recommendedAction": "Design tiers for different client needs and budgets.",
+     "dataSource": "Practice management system; management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "revenue_per_provider",
+     "name": "Revenue per provider",
+     "formula": "revenue / providers",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Revenue for each provider.",
+     "recommendedAction": "Review schedules and service mix by provider.",
+     "dataSource": "Management P&L; provider count",
+     "benchmarkNote": null
+    },
+    {
+     "key": "provider_utilization",
+     "name": "Provider utilization",
+     "formula": "booked_hours / available_hours",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of available provider hours that were booked.",
+     "recommendedAction": "Fill open blocks; review no-show policy.",
+     "dataSource": "Scheduling system (aggregate hours only)",
+     "benchmarkNote": null
+    },
+    {
+     "key": "average_transaction",
+     "name": "Average transaction value",
+     "formula": "revenue / visits",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Average revenue per visit.",
+     "recommendedAction": "Review service bundles and product attachment.",
+     "dataSource": "Management P&L; visit count",
+     "benchmarkNote": null
+    },
+    {
+     "key": "rebooking_rate",
+     "name": "Rebooking rate",
+     "formula": "rebooked_visits / visits",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of visits that left with a next appointment booked.",
+     "recommendedAction": "Coach front-desk checkout on rebooking.",
+     "dataSource": "Scheduling system (aggregate counts only)",
+     "benchmarkNote": null
+    },
+    {
+     "key": "staff_cost_pct",
+     "name": "Staffing as % of revenue",
+     "formula": "(total_labor + payroll_taxes_benefits) / revenue",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "All pay, taxes and benefits per dollar of revenue.",
+     "recommendedAction": "Tie bonuses to revenue, retention and booking conversion.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    }
+   ]
+  },
+  {
+   "industry": "Optometry & Eye Care",
+   "sources": [
+    "Mining for Hidden Cash: The Hidden Cash Map for Independent Optometrists (Prowise)"
+   ],
+   "kpis": [
+    {
+     "key": "sales_to_assets",
+     "name": "Sales to assets",
+     "formula": "revenue / total_assets",
+     "unit": "ratio",
+     "direction": "higher",
+     "basis": "r12",
+     "description": "Revenue generated for each dollar invested in the practice. Very high can signal capacity limits ahead.",
+     "recommendedAction": "A low result may mean income can grow without buying more equipment.",
+     "dataSource": "Management P&L; balance sheet",
+     "benchmarkNote": null
+    },
+    {
+     "key": "gross_profit_margin",
+     "name": "Gross profit margin",
+     "formula": "gross_profit / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Revenue kept after frames, lenses and lab fees.",
+     "recommendedAction": "Renegotiate supplier contracts, adjust pricing or improve product mix.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "net_profit_margin",
+     "name": "Net profit margin",
+     "formula": "pretax_profit / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Pretax profit kept from each dollar of sales.",
+     "recommendedAction": "Work the levers in order: price, volume sold, variable costs, fixed costs.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "days_in_inventory",
+     "name": "Days in inventory",
+     "formula": "inventory / cogs * period_days",
+     "unit": "days",
+     "direction": "lower",
+     "basis": "month",
+     "description": "How long frames and other stock sit on the shelf.",
+     "recommendedAction": "Order less next time on slow lines; set an optimal stock level.",
+     "dataSource": "Inventory value at period end; management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "ar_days",
+     "name": "Accounts receivable days",
+     "formula": "accounts_receivable / revenue * period_days",
+     "unit": "days",
+     "direction": "lower",
+     "basis": "r12",
+     "description": "How many days of sales are still waiting to be collected.",
+     "recommendedAction": "Assign one owner for collections; follow up at 30, 60 and 90 days; take deposits or retainers.",
+     "dataSource": "Balance sheet; management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "ap_days",
+     "name": "Accounts payable days",
+     "formula": "accounts_payable / cogs * period_days",
+     "unit": "days",
+     "direction": "higher",
+     "basis": "r12",
+     "description": "How many days the practice takes to pay suppliers. Best kept steady.",
+     "recommendedAction": "Paying too fast strains cash; paying too slowly risks late fees and vendor relationships.",
+     "dataSource": "Balance sheet; management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "cash_gap_days",
+     "name": "Cash gap (days)",
+     "formula": "inventory / cogs * period_days + accounts_receivable / revenue * period_days - accounts_payable / cogs * period_days",
+     "unit": "days",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Days between paying suppliers and collecting from patients and insurers.",
+     "recommendedAction": "Shorten collection time and inventory days before stretching payables.",
+     "dataSource": "Balance sheet; inventory value; management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "revenue_per_exam",
+     "name": "Revenue per exam",
+     "formula": "revenue / exams",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Average revenue per patient exam (aggregate count only).",
+     "recommendedAction": "Review optical capture and product mix.",
+     "dataSource": "Management P&L; practice management system",
+     "benchmarkNote": null
+    }
+   ]
+  },
+  {
+   "industry": "Property Management",
+   "sources": [
+    "7 Portfolio Multipliers for Property Management (image-only PDF, read by OCR)"
+   ],
+   "kpis": [
+    {
+     "key": "revenue_per_unit",
+     "name": "Revenue per unit managed",
+     "formula": "revenue / units_managed",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Management company revenue for each door under management.",
+     "recommendedAction": "Add value-adding services: maintenance, resident benefit packages, pet rent.",
+     "dataSource": "Management P&L; unit count",
+     "benchmarkNote": null
+    },
+    {
+     "key": "contract_retention",
+     "name": "Management contract retention",
+     "formula": "(owners_at_start - owners_lost) / owners_at_start",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "r12",
+     "description": "Share of owner clients retained over the period.",
+     "recommendedAction": "Communicate proactively with owners; review the accounts that left.",
+     "dataSource": "Client list",
+     "benchmarkNote": "Reference only, not a target: \"7 Portfolio Multipliers\" (vendor guide, undated, not independently verified) cites retaining at least 90% of owners each year."
+    },
+    {
+     "key": "owner_lead_conversion",
+     "name": "Owner lead conversion",
+     "formula": "new_contracts / owner_leads",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of owner leads that sign a management contract.",
+     "recommendedAction": "Lead with concrete results in the sales conversation.",
+     "dataSource": "CRM",
+     "benchmarkNote": "Reference only, not a target: \"7 Portfolio Multipliers\" (vendor guide, undated, not independently verified) cites the best property managers converting 50% or more."
+    },
+    {
+     "key": "ancillary_revenue_share",
+     "name": "Ancillary revenue share",
+     "formula": "ancillary_revenue / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of revenue from services beyond the base management fee.",
+     "recommendedAction": "Small per-unit additions compound across the portfolio.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "units_per_employee",
+     "name": "Units per employee",
+     "formula": "units_managed / employees",
+     "unit": "number",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Doors managed per team member \u2014 a measure of workflow efficiency.",
+     "recommendedAction": "Automate rent collection, maintenance requests and accounting.",
+     "dataSource": "Unit count; headcount",
+     "benchmarkNote": null
+    },
+    {
+     "key": "net_profit_margin",
+     "name": "Net profit margin",
+     "formula": "pretax_profit / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Pretax profit kept from each dollar of sales.",
+     "recommendedAction": "Work the levers in order: price, volume sold, variable costs, fixed costs.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "reinvestment_rate",
+     "name": "Reinvestment rate",
+     "formula": "reinvestment_spend / pretax_profit",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "r12",
+     "description": "Share of earnings reinvested in technology, marketing or acquisitions.",
+     "recommendedAction": "Plan reinvestment in the annual budget.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": "Reference only, not a target: \"7 Portfolio Multipliers\" (vendor guide, undated, not independently verified) cites reinvesting 10%\u201320% of earnings."
+    },
+    {
+     "key": "portfolio_occupancy",
+     "name": "Portfolio occupancy",
+     "formula": "occupied_units / units_managed",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of managed units that are occupied.",
+     "recommendedAction": "Review pricing and turn time on vacant units.",
+     "dataSource": "Property management system",
+     "benchmarkNote": null
+    },
+    {
+     "key": "rent_delinquency",
+     "name": "Rent delinquency",
+     "formula": "delinquent_rent / rent_billed",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Share of billed rent that is past due.",
+     "recommendedAction": "Tighten collection workflow and follow-up.",
+     "dataSource": "Property management system",
+     "benchmarkNote": null
+    }
+   ]
+  },
+  {
+   "industry": "Real Estate",
+   "sources": [
+    "Brief (starter KPIs)"
+   ],
+   "kpis": [
+    {
+     "key": "occupancy",
+     "name": "Occupancy",
+     "formula": "occupied_units / total_units",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of units occupied.",
+     "recommendedAction": "Review pricing and turn time on vacant units.",
+     "dataSource": "Rent roll",
+     "benchmarkNote": null
+    },
+    {
+     "key": "rent_collection",
+     "name": "Rent collection rate",
+     "formula": "rent_collected / rent_billed",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Rent collected relative to rent billed.",
+     "recommendedAction": "Follow up on delinquent accounts.",
+     "dataSource": "Rent roll",
+     "benchmarkNote": null
+    },
+    {
+     "key": "noi_margin",
+     "name": "Net operating income margin",
+     "formula": "operating_income / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Operating income per dollar of rental revenue.",
+     "recommendedAction": "Review property operating expenses by category.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "dscr",
+     "name": "Debt service coverage ratio",
+     "formula": "(operating_income + depreciation) / debt_service",
+     "unit": "ratio",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Operating income available to cover scheduled debt payments.",
+     "recommendedAction": "If coverage is tight, review rents, expenses and refinancing options.",
+     "dataSource": "Management P&L; loan schedules",
+     "benchmarkNote": null
+    },
+    {
+     "key": "capex_reserve_share",
+     "name": "Capital reserve funding",
+     "formula": "capital_reserve_contribution / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of revenue set aside for capital expenditures.",
+     "recommendedAction": "Fund reserves before distributions.",
+     "dataSource": "Management P&L; reserve account",
+     "benchmarkNote": null
+    }
+   ]
+  },
+  {
+   "industry": "Restaurant & Food",
+   "sources": [
+    "Mastering Restaurant Accounting",
+    "The Build Your Restaurant Launch Field Guide",
+    "Brief (starter KPIs)"
+   ],
+   "kpis": [
+    {
+     "key": "food_cost_pct",
+     "name": "Food cost %",
+     "formula": "cogs / revenue",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Food and beverage cost as a share of sales.",
+     "recommendedAction": "Review portioning, waste and supplier pricing; cost each menu item per serving.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": "Reference only, not a target: \"Build Your Restaurant Launch Field Guide\" (vendor guide, undated, not independently verified) cites aiming for a 25%\u201335% food cost ratio."
+    },
+    {
+     "key": "labor_cost_pct",
+     "name": "Labor cost %",
+     "formula": "total_labor / revenue",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Total labor as a share of sales.",
+     "recommendedAction": "Match scheduling to sales by daypart.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "prime_cost_pct",
+     "name": "Prime cost %",
+     "formula": "(cogs + total_labor) / revenue",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Food cost plus labor as a share of sales.",
+     "recommendedAction": "Address whichever of food cost or labor has moved most.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "gross_profit_after_prime",
+     "name": "Gross profit after prime cost",
+     "formula": "(gross_profit - total_labor) / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "What is left after food cost and labor, per dollar of sales.",
+     "recommendedAction": "Use it to see whether sales growth is reaching the bottom line.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "average_check",
+     "name": "Average check",
+     "formula": "revenue / covers",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Average sales per guest.",
+     "recommendedAction": "Review menu pricing and upsell.",
+     "dataSource": "Management P&L; POS guest count",
+     "benchmarkNote": null
+    },
+    {
+     "key": "table_turnover",
+     "name": "Table turnover (turns per seat per day)",
+     "formula": "covers / (seats * service_days)",
+     "unit": "number",
+     "direction": "higher",
+     "basis": "month",
+     "description": "How many guests each seat serves per day open.",
+     "recommendedAction": "Review service pace and reservation spacing at peak times.",
+     "dataSource": "POS guest count; seating; days open",
+     "benchmarkNote": null
+    },
+    {
+     "key": "sales_per_labor_hour",
+     "name": "Sales per labor hour",
+     "formula": "revenue / labor_hours",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Sales for each hour of labor scheduled.",
+     "recommendedAction": "Adjust staffing on slow shifts.",
+     "dataSource": "Management P&L; payroll hours",
+     "benchmarkNote": null
+    },
+    {
+     "key": "operating_expense_ratio",
+     "name": "Operating expense ratio",
+     "formula": "operating_expenses / revenue",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Operating expenses per dollar of sales.",
+     "recommendedAction": "Review the largest categories against budget.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "contribution_margin_ratio",
+     "name": "Contribution margin ratio",
+     "formula": "contribution_margin / revenue",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of each sales dollar left after food cost and direct labor.",
+     "recommendedAction": "Promote the menu items with the highest contribution.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "break_even_revenue",
+     "name": "Break-even revenue",
+     "formula": "operating_expenses / (contribution_margin / revenue)",
+     "unit": "currency",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Sales needed in the period to cover operating expenses at the current contribution margin.",
+     "recommendedAction": "Compare with actual sales by week to see how much cushion there is.",
+     "dataSource": "Management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "inventory_turnover",
+     "name": "Inventory turnover",
+     "formula": "cogs / average_inventory",
+     "unit": "number",
+     "direction": "higher",
+     "basis": "month",
+     "description": "How many times inventory was used and replaced in the period.",
+     "recommendedAction": "Reduce par levels on slow items.",
+     "dataSource": "Inventory counts; management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "waste_pct",
+     "name": "Waste as % of food cost",
+     "formula": "waste_cost / cogs",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Recorded waste as a share of food and beverage cost.",
+     "recommendedAction": "Look for over-prepping, spoilage and evidence of theft.",
+     "dataSource": "Waste log; management P&L",
+     "benchmarkNote": null
+    },
+    {
+     "key": "current_ratio",
+     "name": "Current ratio",
+     "formula": "current_assets / current_liabilities",
+     "unit": "ratio",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Short-term assets available to cover short-term obligations.",
+     "recommendedAction": "Below 1.0 means near-term bills exceed near-term resources.",
+     "dataSource": "Balance sheet",
+     "benchmarkNote": "Reference only, not a target: \"Mastering Restaurant Accounting\" (vendor guide, undated, not independently verified) cites verifying the current ratio is above 1."
+    },
+    {
+     "key": "dscr",
+     "name": "Debt service coverage ratio",
+     "formula": "(operating_income + depreciation) / debt_service",
+     "unit": "ratio",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Operating cash earnings available to cover loan payments.",
+     "recommendedAction": "Lenders look at this before extending credit.",
+     "dataSource": "Management P&L; loan schedules",
+     "benchmarkNote": null
+    }
+   ]
+  },
+  {
+   "industry": "Professional Services",
+   "sources": [
+    "Brief"
+   ],
+   "kpis": [
+    {
+     "key": "revenue_per_employee",
+     "name": "Revenue per employee",
+     "formula": "revenue / employees",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Revenue for each team member.",
+     "recommendedAction": "Compare with fully loaded cost per employee.",
+     "dataSource": "Management P&L; headcount",
+     "benchmarkNote": null
+    },
+    {
+     "key": "billable_utilization",
+     "name": "Billable utilization",
+     "formula": "billable_hours / available_hours",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of available hours that were billable.",
+     "recommendedAction": "Review non-billable time by person.",
+     "dataSource": "Timekeeping system",
+     "benchmarkNote": null
+    },
+    {
+     "key": "ar_days",
+     "name": "Accounts receivable days",
+     "formula": "accounts_receivable / revenue * period_days",
+     "unit": "days",
+     "direction": "lower",
+     "basis": "r12",
+     "description": "How many days of sales are still waiting to be collected.",
+     "recommendedAction": "Assign one owner for collections; follow up at 30, 60 and 90 days; take deposits or retainers.",
+     "dataSource": "Balance sheet; management P&L",
+     "benchmarkNote": null
+    }
+   ]
+  },
+  {
+   "industry": "Automotive Services",
+   "sources": [
+    "Brief"
+   ],
+   "kpis": [
+    {
+     "key": "average_repair_order",
+     "name": "Average repair order",
+     "formula": "revenue / repair_orders",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Average sales per repair order.",
+     "recommendedAction": "Review inspection and estimate presentation.",
+     "dataSource": "Management P&L; shop management system",
+     "benchmarkNote": null
+    },
+    {
+     "key": "effective_labor_rate",
+     "name": "Effective labor rate",
+     "formula": "labor_sales / billed_hours",
+     "unit": "currency",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Labor sales for each hour billed.",
+     "recommendedAction": "Compare with the posted rate; review discounting.",
+     "dataSource": "Shop management system",
+     "benchmarkNote": null
+    },
+    {
+     "key": "technician_efficiency",
+     "name": "Technician efficiency",
+     "formula": "billed_hours / clocked_hours",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Hours billed relative to hours technicians were clocked in.",
+     "recommendedAction": "Review dispatching and parts wait time.",
+     "dataSource": "Shop management system; timekeeping",
+     "benchmarkNote": null
+    },
+    {
+     "key": "parts_margin",
+     "name": "Parts gross margin",
+     "formula": "(parts_sales - parts_cost) / parts_sales",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Gross margin earned on parts.",
+     "recommendedAction": "Review the parts pricing matrix.",
+     "dataSource": "Shop management system",
+     "benchmarkNote": null
+    }
+   ]
+  },
+  {
+   "industry": "Nonprofit Organizations",
+   "sources": [
+    "Brief"
+   ],
+   "kpis": [
+    {
+     "key": "program_expense_ratio",
+     "name": "Program expense ratio",
+     "formula": "program_expenses / total_expenses",
+     "unit": "percent",
+     "direction": "higher",
+     "basis": "month",
+     "description": "Share of total expenses spent on programs.",
+     "recommendedAction": "Review allocation of shared costs.",
+     "dataSource": "Functional expense allocation",
+     "benchmarkNote": null
+    },
+    {
+     "key": "fundraising_efficiency",
+     "name": "Cost to raise a dollar",
+     "formula": "fundraising_cost / contributions",
+     "unit": "currency",
+     "direction": "lower",
+     "basis": "month",
+     "description": "Fundraising cost for each dollar contributed.",
+     "recommendedAction": "Review the return on each fundraising channel.",
+     "dataSource": "Functional expense allocation; contributions",
+     "benchmarkNote": null
+    },
+    {
+     "key": "operating_runway",
+     "name": "Operating runway (months)",
+     "formula": "unrestricted_cash / (total_expenses / 12)",
+     "unit": "number",
+     "direction": "higher",
+     "basis": "r12",
+     "description": "Months of expenses covered by unrestricted cash. Restricted funds are excluded.",
+     "recommendedAction": "Build unrestricted reserves before expanding programs.",
+     "dataSource": "Unrestricted cash balance; annual expenses",
+     "benchmarkNote": null
+    },
+    {
+     "key": "funding_concentration",
+     "name": "Largest funder share",
+     "formula": "largest_funder_amount / contributions",
+     "unit": "percent",
+     "direction": "lower",
+     "basis": "r12",
+     "description": "Share of contributions coming from the single largest funder.",
+     "recommendedAction": "Diversify funding sources.",
+     "dataSource": "Contribution records",
+     "benchmarkNote": null
+    }
+   ]
+  }
+ ]
+}
