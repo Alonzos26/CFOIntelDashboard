@@ -2,11 +2,12 @@
 // Built from approved months only, so nothing unreviewed can reach a client through a packet.
 import { type Db } from './db.ts';
 import * as svc from './services.ts';
-import { Flow, Pdf, type Col } from './pdf.ts';
+import { headlineFor, summaryFor } from './budget.ts';
+import { type Deck, type Slide } from './slides.ts';
 import { DEFAULT_EMAIL, type Commentary, highlights, measureActual, measureTarget, meetingScript, renderTemplate, scriptText } from '../engine/comms.ts';
 import { buildScorecard, type Scorecard } from '../engine/scorecard.ts';
 import { rolling3 } from '../engine/reporting.ts';
-import { BS_LINES, LINE_LABELS, type PnlResult, computePnl, coreCapital, fmtMoney, fmtPct, periodLabel, rolling12, ytd } from '../engine/core.ts';
+import { computePnl, coreCapital, fmtMoney, fmtPct, periodLabel, rolling12, ytd } from '../engine/core.ts';
 
 export const FIRM_NAME = 'SJ Advisory & Tax';
 const longPeriod = (p: string) => `${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][Number(p.slice(5, 7)) - 1]} ${p.slice(0, 4)}`;
@@ -37,7 +38,10 @@ export function gather(db: Db, tenantId: string, o: CommsOptions) {
   const script = meetingScript({ clientName: vars.client_name, firstName: first, advisorName: o.advisorName, period: cur.period, scorecard, commentary, scorecardPublished: !!pub, insights,
     month: { revenue: month.lines.revenue, truePretax: month.adjustedPretax, pretaxPct: month.adjustedPretaxPct.value }, ytd: { revenue: y.lines.revenue, truePretax: y.adjustedPretax, pretaxPct: y.adjustedPretaxPct.value }, cash: cur.bs?.cash ?? null,
     coreCapital: cc.available === null ? null : { available: cc.available, target: cc.target }, actions, internal: notices, recent });
-  return { ready: true as const, clientName: tenant.name as string, synthetic: !!tenant.is_synthetic, period: cur.period, months, idx, settings: s, month, prior, ytd: y, r12: r, scorecard, commentary, scorecardPublished: !!pub, insights, coreCapital: cc, contacts, actions, notices, vars, highlights: hl, script, recent };
+  { const bl = headlineFor(db, tenantId, cur.period); if (bl) script.sections[1].say.push(`Against the budget we set for the year: ${bl}`); else script.sections[1].internal.push('No finalized budget exists for this fiscal year, so there is no budget-to-actual line.'); }
+  return { ready: true as const, clientName: tenant.name as string, synthetic: !!tenant.is_synthetic, period: cur.period, months, idx, settings: s, month, prior, ytd: y, r12: r, scorecard, commentary, scorecardPublished: !!pub, insights, coreCapital: cc, contacts, actions, notices, vars, highlights: hl, script, recent,
+    /** What the client's Overview page shows for this month: figure tiles, top priorities visible to the client, and the monthly trend. */ overview: (() => { const ov = svc.overview(db, tenantId, true, 'monthly'); return { cards: ov.cards, priorities: ov.priorities, trend: ov.trend ?? [] }; })(),
+    /** Budget to actual and outlook, when a budget is finalized for the fiscal year. */ budget: summaryFor(db, tenantId, cur.period), basis: basis.value };
 }
 export type Gathered = Extract<ReturnType<typeof gather>, { ready: true }>;
 
@@ -49,51 +53,8 @@ export function draft(db: Db, tenantId: string, g: Gathered) { const t = templat
 export const packetName = (g: Gathered) => `${g.vars.client_name.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${g.period}-financial-statements.pdf`;
 export { scriptText };
 
-// ---------- Monthly statements packet ----------
+// The statements packet itself is built in packet.ts.
 const $ = (c: number) => fmtMoney(c); const pc = (r: { value: number | null }) => (r.value === null ? 'n/a' : fmtPct(r.value));
-export function packetPdf(g: Gathered, preparedBy: string, today = new Date().toISOString().slice(0, 10)): Buffer {
-  const P = longPeriod(g.period); const name = g.vars.client_name;
-  const f = new Flow(74, (fl) => { fl.pdf.text(fl.left, 40, name, { size: 9, bold: true, gray: 0.3 }); fl.pdf.text(fl.right, 40, `Monthly financial statements · ${P}`, { size: 9, align: 'right', gray: 0.3 }); fl.pdf.rule(fl.left, 48, fl.right, 0.6); });
-  f.pdf.text(f.left, f.y + 22, name, { size: 22, bold: true }); f.y += 34; f.pdf.text(f.left, f.y + 13, `Monthly financial statements · ${P}`, { size: 13, gray: 0.25 }); f.y += 24;
-  f.para(`Prepared by ${preparedBy}, ${FIRM_NAME}, on ${today}. Management statements for discussion: unaudited, and not prepared for lenders or tax filing.${g.synthetic ? ' SYNTHETIC DEMONSTRATION DATA: every figure in this packet is invented.' : ''}`, { size: 9, gray: 0.3, gap: 8 });
-  const cols = (first: string, labels: string[]): Col[] => { const fw = labels.length > 3 ? 180 : 210; const w = (f.right - f.left - fw) / labels.length; return [{ label: first, width: fw }, ...labels.map((l) => ({ label: l, width: w, align: 'right' as const }))]; };
-  const w = [g.month, g.ytd, g.r12] as PnlResult[]; const r12Label = g.r12.complete ? 'Rolling 12 months' : `Last ${g.r12.monthsIncluded} months`;
-  f.heading('The month at a glance');
-  f.table(cols('', [P, 'Year to date', r12Label]), [
-    { cells: ['Sales', ...w.map((x) => $(x.lines.revenue))] }, { cells: ['Gross profit before labor', ...w.map((x) => $(x.grossProfit))] }, { cells: ['  as % of sales', ...w.map((x) => pc(x.grossMarginPct))], gray: 0.4 },
-    { cells: ['True pretax profit', ...w.map((x) => $(x.adjustedPretax))], bold: true }, { cells: ['  as % of sales', ...w.map((x) => pc(x.adjustedPretaxPct))], gray: 0.4 },
-    ...(g.months[g.idx].bs ? [{ cells: ['Cash at month end', $(g.months[g.idx].bs!.cash), '', ''] }] : []), ...(g.coreCapital.available !== null ? [{ cells: ['Operating reserve / target', `${$(g.coreCapital.available)} / ${$(g.coreCapital.target)}`, '', ''] }] : []) ]);
-  f.para('True pretax profit is profit before income tax after paying the owner a market-rate wage for the work they do.', { size: 8.5, gray: 0.4 });
-  f.heading('What stood out'); g.highlights.forEach((h) => f.bullet(h));
-  f.heading(`Scorecard · rolling 12 months to ${periodLabel(g.period)}`);
-  f.table([{ label: 'Measure', width: 190 }, { label: 'Actual', width: 130, align: 'right' }, { label: 'Target', width: 130, align: 'right' }, { label: 'Grade', width: f.right - f.left - 450, align: 'right' }],
-    [...g.scorecard.measures.map((m) => ({ cells: [m.label, measureActual(m).replace(' the cap', ''), measureTarget(m).replace(' the cap', ''), g.commentary[m.key]?.grade ?? m.grade], note: g.commentary[m.key]?.comment || undefined })),
-      ...(g.commentary.tax?.comment || g.commentary.tax?.grade ? [{ cells: ['Tax implications', '', '', g.commentary.tax.grade ?? 'N/A'], note: g.commentary.tax.comment || undefined }] : [])]);
-  f.para('Grades compare each result with targets set for this business. They are not industry averages.', { size: 8.5, gray: 0.4 });
-  // Management P&L
-  f.newPage(); f.heading('Management profit and loss');
-  const c4 = [g.month, g.prior, g.ytd, g.r12] as (PnlResult | null)[]; const v = (fn: (x: PnlResult) => number) => c4.map((x) => (x ? $(fn(x)) : '—')); const L = (k: keyof PnlResult['lines']) => v((x) => x.lines[k]);
-  f.table(cols('', [P, 'Prior month', 'Year to date', g.r12.complete ? 'Rolling 12' : `Last ${g.r12.monthsIncluded} mo.`]), [
-    { cells: ['Sales', ...L('revenue')], bold: true }, { cells: ['Non-labor cost of goods sold', ...L('cogs')] }, { cells: ['Gross profit before labor', ...v((x) => x.grossProfit)], bold: true, rule: true },
-    { cells: ['Direct labor', ...L('direct_labor')] }, { cells: ['Contribution margin', ...v((x) => x.contributionMargin)], bold: true, rule: true },
-    { cells: ['Management and office labor', ...L('mgmt_labor')] }, { cells: ['Facilities', ...L('facilities')] }, { cells: ['Marketing', ...L('marketing')] }, { cells: ['Payroll taxes and benefits', ...L('payroll_taxes_benefits')] }, { cells: ['Other operating expenses', ...L('other_opex')] },
-    { cells: ['Operating income', ...v((x) => x.operatingIncome)], bold: true, rule: true }, { cells: ['Other income, depreciation and interest', ...v((x) => x.otherTotal)] },
-    { cells: ['Pretax profit as booked', ...v((x) => x.pretax)], bold: true, rule: true }, { cells: ['Owner pay adjustment to market wage', ...v((x) => -x.ownerAdj)] }, { cells: ['True pretax profit', ...v((x) => x.adjustedPretax)], bold: true, rule: true },
-    { cells: ['  as % of sales', ...c4.map((x) => (x ? pc(x.adjustedPretaxPct) : '—'))], gray: 0.4 } ]);
-  f.para(`Year to date runs from ${periodLabel(g.ytd.from)}. ${g.r12.complete ? '' : `A full rolling twelve months is not yet available; the last column covers ${g.r12.monthsIncluded} months. `}Accounts are grouped into the lines above; the dashboard shows the accounts behind each line.`, { size: 8.5, gray: 0.4 });
-  // Balance sheet
-  const bs = g.months[g.idx].bs; const pb = g.idx > 0 ? g.months[g.idx - 1].bs : null;
-  if (bs) { f.newPage(); f.heading('Balance sheet'); const A = ['cash', 'accounts_receivable', 'other_current_assets', 'fixed_assets', 'accumulated_depreciation', 'other_assets'] as const; const Li = ['accounts_payable', 'credit_cards', 'other_current_liabilities', 'line_of_credit', 'notes_payable'] as const;
-    /* accumulated depreciation is stored as a negative asset */ const val = (b: typeof bs, k: string) => (b as any)[k] as number; const tot = (b: typeof bs, ks: readonly string[]) => ks.reduce((a, k) => a + val(b, k), 0);
-    const row = (label: string, fn: (b: typeof bs) => number, o: { bold?: boolean; rule?: boolean } = {}) => ({ cells: [label, $(fn(bs)), pb ? $(fn(pb)) : '—', pb ? $(fn(bs) - fn(pb)) : '—'], ...o });
-    f.table(cols('', [periodLabel(g.period), 'Prior month', 'Change']), [...A.map((k) => row(LINE_LABELS[k] ?? k, (b) => val(b, k))), row('Total assets', (b) => tot(b, A), { bold: true, rule: true }), ...Li.map((k) => row(LINE_LABELS[k] ?? k, (b) => val(b, k))), row('Total liabilities', (b) => tot(b, Li), { bold: true, rule: true }), row("Owners' equity", (b) => b.equity, { bold: true }), row('Total liabilities and equity', (b) => tot(b, Li) + b.equity, { bold: true, rule: true })]);
-    void BS_LINES; }
-  f.heading('Where to look next');
-  f.para('Your dashboard is kept current with these figures. It has the full scorecard with trends, the 13-week cash forecast, the rolling twelve-month view, and a what-if forecast for testing a decision before you make it.');
-  f.para(`Questions about anything here go to ${preparedBy} at ${FIRM_NAME}.`);
-  const n = f.pdf.pageCount; for (let i = 0; i < n; i++) f.pdf.onPage(i, () => { f.pdf.rule(f.left, Pdf.height - 44, f.right, 0.6); f.pdf.text(f.left, Pdf.height - 32, `${FIRM_NAME} · For management discussion · Unaudited${g.synthetic ? ' · SYNTHETIC DEMO DATA' : ''}`, { size: 8, gray: 0.4 }); f.pdf.text(f.right, Pdf.height - 32, `Page ${i + 1} of ${n}`, { size: 8, align: 'right', gray: 0.4 }); });
-  return f.pdf.build({ title: `${name} - ${P} financial statements`, author: FIRM_NAME });
-}
 
 // ---------- Draft email file (.eml) with the packet attached ----------
 const b64 = (b: Buffer) => b.toString('base64').replace(/(.{76})/g, '$1\r\n'); const hdr = (s: string) => (/^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${Buffer.from(s, 'utf8').toString('base64')}?=`);
@@ -103,3 +64,30 @@ export function emailFile(o: { to: string[]; subject: string; body: string; atta
   return Buffer.from([`To: ${o.to.map(safe).join(', ')}`, `Subject: ${hdr(safe(o.subject))}`, 'X-Unsent: 1', 'MIME-Version: 1.0', `Content-Type: multipart/mixed; boundary="${bd}"`, '', `--${bd}`, 'Content-Type: text/plain; charset=utf-8', 'Content-Transfer-Encoding: base64', '', b64(Buffer.from(o.body.replace(/\r?\n/g, '\r\n'), 'utf8')), `--${bd}`,
     `Content-Type: application/pdf; name="${o.filename}"`, 'Content-Transfer-Encoding: base64', `Content-Disposition: attachment; filename="${o.filename}"`, '', b64(o.attachment), `--${bd}--`, ''].join('\r\n'), 'utf8');
 }
+
+// ---------- Meeting slides ----------
+/** The deck that goes with the meeting script: same approved figures, one idea per slide, short enough to present in the meeting. */
+export function deck(db: Db, tenantId: string, g: Gathered, preparedBy: string, today = new Date().toISOString().slice(0, 10)): Deck {
+  const P = longPeriod(g.period); const name = g.vars.client_name; const w = [g.month, g.ytd, g.r12]; const cur = g.months[g.idx]; const slides: Slide[] = []; const b = summaryFor(db, tenantId, g.period);
+  slides.push({ kind: 'title', title: name, subtitle: `${P} financial review\nPrepared by ${preparedBy}, ${FIRM_NAME} \u00b7 ${today}${g.synthetic ? '\nSYNTHETIC DEMONSTRATION DATA: every figure is invented' : ''}` });
+  slides.push({ kind: 'content', title: 'The month at a glance', table: { head: ['', P, 'Year to date', g.r12.complete ? 'Rolling 12 months' : `Last ${g.r12.monthsIncluded} months`], widths: [2.2, 1, 1, 1], rows: [
+    { cells: ['Sales', ...w.map((x) => $(x.lines.revenue))] }, { cells: ['Gross profit before labor', ...w.map((x) => $(x.grossProfit))] }, { cells: ['Gross profit %', ...w.map((x) => pc(x.grossMarginPct))] },
+    { cells: ['True pretax profit', ...w.map((x) => $(x.adjustedPretax))], bold: true }, { cells: ['True pretax profit %', ...w.map((x) => pc(x.adjustedPretaxPct))], bold: true }, ...(cur.bs ? [{ cells: ['Cash at month end', $(cur.bs.cash), '', ''] }] : [])] },
+    note: 'True pretax profit is profit before income tax, after paying the owner a market-rate wage.' });
+  slides.push({ kind: 'content', title: 'What stood out', bullets: g.highlights });
+  const r3 = (k: string) => { const x = g.recent?.signals.find((z) => z.key === k); return !x?.status ? '' : x.status === 'better' ? 'Improving' : x.status === 'worse' ? 'Slipping' : x.status === 'seasonal' ? 'Seasonal' : x.status === 'mixed' ? 'Unclear' : 'In line'; };
+  slides.push({ kind: 'content', title: 'Scorecard', table: { head: ['Measure', 'Actual', 'Target', 'Last 3 months', 'Grade'], widths: [2, 1.6, 1.4, 1.1, 0.8], rows: g.scorecard.measures.map((m) => ({ cells: [m.label, measureActual(m).replace(' the cap', ''), measureTarget(m).replace(' the cap', ''), r3(m.key), g.commentary[m.key]?.grade ?? m.grade] })) },
+    note: 'Grades are on the rolling twelve months, against targets set for this business. The last three months show direction only.' });
+  if (b?.bva) { const pick = ['revenue', 'gross_profit', 'direct_labor', 'mgmt_labor', 'operating_income', 'true_pretax']; const sign = (c: number) => (c < 0 ? `(${$(-c)})` : $(c));
+    slides.push({ kind: 'content', title: `Budget to actual \u00b7 ${b.label} year to date`, lead: b.bva.headline, table: { head: ['', 'Actual', 'Budget', 'Difference', 'Full-year budget'], widths: [2.2, 1, 1, 1, 1.1], rows: b.bva.rows.filter((r) => pick.includes(r.key)).map((r) => ({ cells: [r.label, $(r.ytd.actual), $(r.ytd.budget), sign(r.ytd.variance), $(r.fullYearBudget)], bold: r.kind === 'subtotal' })) } });
+    if (b.bva.drivers.length) slides.push({ kind: 'content', title: 'Why actual differs from the plan', bullets: b.bva.drivers.slice(0, 5), note: 'The budget is fixed as it was set. Differences show where to look, not what happened.' }); }
+  if (b?.outlook && !b.outlook.uncoveredMonths.length) { const o = b.outlook; const h = (x: typeof o.next3, t: string) => (x ? `${t}: ${$(x.revenue)} of sales and ${$(x.truePretax)} of true pretax profit${x.truePretaxPct.value === null ? '' : ` (${fmtPct(x.truePretaxPct.value)})`}.` : `${t}: not available yet.`);
+    slides.push({ kind: 'content', title: 'Outlook: where the year is heading', lead: o.headline, bullets: [h(o.next3, 'Next 3 months'), h(o.next12, 'Next 12 months')], note: 'A forecast, rebuilt from the latest results each month. It is an estimate, not a result.' }); }
+  if (cur.bs) { const cc = g.coreCapital; const bl = [`Cash at the end of ${P}: ${$(cur.bs.cash)}.`];
+    if (cc.available !== null) { const gap2 = cc.available - cc.target; bl.push(`Operating reserve: ${$(cc.available)} against a target of ${$(cc.target)}.`, gap2 >= 0 ? `That is ${$(gap2)} above target. Taxes come first, then debt; what is left above the target can be distributed or reinvested.` : `That is ${$(-gap2)} short. Until it is closed: taxes first, then debt, then the reserve. Profit distributions wait.`); }
+    if (cur.bs.line_of_credit > 0) bl.push(`Line of credit balance: ${$(cur.bs.line_of_credit)}.`); slides.push({ kind: 'content', title: 'Cash and operating reserve', bullets: bl }); }
+  if (g.insights.length) slides.push({ kind: 'content', title: 'What we suggest acting on', bullets: g.insights.slice(0, 3).map((x) => `${x.title.replace(/[.:]+$/, '')}: ${x.action}`) });
+  slides.push({ kind: 'content', title: 'Commitments and next steps', bullets: [...(g.actions.length ? g.actions.slice(0, 5).map((a) => `${a.title}${a.owner ? ` \u00b7 ${a.owner}` : ''}${a.dueDate ? ` \u00b7 due ${a.dueDate}` : ''} \u00b7 ${a.status.replace('_', ' ')}`) : ['No open actions yet. Agree one or two today, each with an owner and a date.']), 'Next review: same time next month.'] });
+  return { title: `${name} - ${P} financial review`, author: FIRM_NAME, footer: `${name} \u00b7 ${P} \u00b7 ${FIRM_NAME} \u00b7 For management discussion \u00b7 Unaudited${g.synthetic ? ' \u00b7 SYNTHETIC DEMO DATA' : ''}`, slides };
+}
+export const deckName = (g: Gathered, ext: string) => packetName(g).replace('financial-statements.pdf', `review-slides.${ext}`);

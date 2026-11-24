@@ -67,11 +67,19 @@ CREATE TABLE bank_feed_consent (tenant_id uuid PRIMARY KEY REFERENCES tenants(id
 
 CREATE TABLE comm_templates (tenant_id uuid PRIMARY KEY REFERENCES tenants(id), subject text NOT NULL, body text NOT NULL, updated_by uuid REFERENCES users(id), updated_at timestamptz NOT NULL);
 
+CREATE TABLE budgets (tenant_id uuid NOT NULL REFERENCES tenants(id), fiscal_year text NOT NULL, status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','final')), deadline date NOT NULL,
+  data_json jsonb NOT NULL, seeded_from_json jsonb, created_by uuid NOT NULL REFERENCES users(id), created_at timestamptz NOT NULL, updated_by uuid REFERENCES users(id), updated_at timestamptz NOT NULL,
+  finalized_by uuid REFERENCES users(id), finalized_at timestamptz, PRIMARY KEY (tenant_id, fiscal_year));
+-- A finalized budget is permanent: refuse any change or deletion.
+CREATE FUNCTION budgets_final_locked() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'A finalized budget cannot be changed or deleted.'; END; $$ LANGUAGE plpgsql;
+CREATE TRIGGER budgets_final_locked BEFORE UPDATE OR DELETE ON budgets FOR EACH ROW WHEN (OLD.status = 'final') EXECUTE FUNCTION budgets_final_locked();
+CREATE TABLE forecast_outlook (tenant_id uuid PRIMARY KEY REFERENCES tenants(id), levers_json jsonb NOT NULL, note text NOT NULL DEFAULT '', updated_by uuid REFERENCES users(id), updated_at timestamptz NOT NULL);
+
 -- Row-level security on every tenant-owned table.
 DO $$
 DECLARE t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['accounts','import_batches','facts','period_status','adjustments','scorecards','weekly_entries','weekly_reports','comments','cash_items','scenarios','tenant_kpis','kpi_inputs','actions','owner_wage_plans','daily_cash','bank_feed_consent','comm_templates']
+  FOREACH t IN ARRAY ARRAY['accounts','import_batches','facts','period_status','adjustments','scorecards','weekly_entries','weekly_reports','comments','cash_items','scenarios','tenant_kpis','kpi_inputs','actions','owner_wage_plans','daily_cash','bank_feed_consent','comm_templates','budgets','forecast_outlook']
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);

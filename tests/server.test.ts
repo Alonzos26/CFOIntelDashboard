@@ -30,7 +30,8 @@ class Client {
     return { status: res.status, body: raw ? await res.text() : await res.json() as any, headers: res.headers };
   }
   async raw(path: string, o: { method?: string; body?: unknown } = {}) { const headers: Record<string, string> = { 'x-requested-with': 'cfo', cookie: this.cookie }; if (o.body !== undefined) headers['content-type'] = 'application/json'; return fetch(base + path, { method: o.method ?? 'GET', headers, body: o.body === undefined ? undefined : JSON.stringify(o.body) }); }
-  get = (p: string) => this.call('GET', p); post = (p: string, b: unknown = {}) => this.call('POST', p, b); put = (p: string, b: unknown = {}) => this.call('PUT', p, b);
+  get = (p: string) => this.call('GET', p);
+  del = (p: string) => this.call('DELETE', p); post = (p: string, b: unknown = {}) => this.call('POST', p, b); put = (p: string, b: unknown = {}) => this.call('PUT', p, b);
 }
 async function login(email: string) { const c = new Client(); const r = await c.post('/api/auth/login', { email, password: DEMO_PASSWORD }); assert.equal(r.status, 200, JSON.stringify(r.body)); return c; }
 const file = (name: string) => ({ filename: name, contentBase64: readFileSync(`examples/imports/${name}`).toString('base64') });
@@ -408,7 +409,11 @@ test('client communications: staff only, approved figures only, packet PDF and d
   const xref = Number(txt.match(/startxref\n(\d+)/)![1]); assert.equal(txt.slice(xref, xref + 4), 'xref'); for (const m of txt.slice(xref).matchAll(/^(\d{10}) 00000 n /gm)) assert.match(txt.slice(Number(m[1]), Number(m[1]) + 12), /^\d+ 0 obj/);
   { const g = (await import('../src/server/comms.ts')).gather(db, T.cedar, { advisorName: 'x', publicUrl: null }) as any; const b = g.months[g.idx].bs; const assets = b.cash + b.accounts_receivable + b.other_current_assets + b.fixed_assets + b.accumulated_depreciation + b.other_assets; const fm = (c: number) => `$${Math.round(c / 100).toLocaleString('en-US')}`;
     assert.equal((txt.match(new RegExp(`\\(${fm(assets).replace(/[$]/g, '\\$')}\\)`, 'g')) ?? []).length >= 2, true, 'total assets equals total liabilities and equity in the packet'); }
-  assert.ok(txt.includes('(Management profit and loss)')); assert.ok(txt.includes('(Balance sheet)')); assert.ok(txt.includes('SYNTHETIC DEMO DATA')); assert.ok(txt.includes(`(${d.values.revenue})`), 'the packet and the email quote the same sales figure');
+  assert.ok(txt.includes('(Management profit and loss)')); assert.ok(txt.includes('(Balance sheet)'));
+  // The packet opens with the Overview page, then priorities and trend, and carries budget to actual and the cash flow statement.
+  assert.match(txt, /MediaBox \[0 0 792 612\]/, 'landscape'); for (const need of ['(Financial Scorecard)', '(Scorecard)', '(WHAT IT SAYS)', '(Your Top 3 Financial Priorities)', '(Cash flow statement)', '(Ending cash)', `(Prior year \\(12/31/${Number(d.period.slice(0, 4)) - 1}\\))`, '(Why actual differs from the plan)']) assert.ok(txt.includes(need), need);
+  assert.ok(/\(Budget to actual /.test(txt), 'a finalized budget puts budget to actual in the packet'); const ov = (await (await login('owner@cedarridge.demo')).get(`${t}/overview`)).body; for (const k of ov.cards) assert.ok(txt.includes(`(${k.label})`), `tile ${k.label}`);
+  { const pg = (txt.match(/\/Type \/Page /g) ?? []).length; assert.ok(pg >= 5 && txt.includes(`(Page ${pg} of ${pg})`), String(pg)); assert.ok(txt.includes('/Subtype /Image'), 'the firm logo is embedded when assets/firm-logo.png exists'); } assert.ok(txt.includes('SYNTHETIC DEMO DATA')); assert.ok(txt.includes(`(${d.values.revenue})`), 'the packet and the email quote the same sales figure');
   // Draft email: unsent, addressed, with the packet attached; unfilled fields and bad addresses are refused.
   const eml = await adv.raw(`${t}/comms/email.eml`, { method: 'POST', body: { to: ['owner@cedarridge.demo'], subject: d.draft.subject, body: d.draft.body } }); assert.equal(eml.status, 200); const e = Buffer.from(await eml.arrayBuffer()).toString('utf8');
   assert.match(e, /^To: owner@cedarridge\.demo\r\n/); assert.match(e, /\r\nX-Unsent: 1\r\n/); assert.match(e, /Content-Type: application\/pdf; name="Cedar-Ridge-Builders-\d{4}-\d{2}-financial-statements\.pdf"/);
@@ -426,4 +431,59 @@ test('rolling three is served with the financials and the scorecard, on the mont
   const sc = (await owner.get(`${t}/scorecard`)).body; if (sc.current) assert.equal(sc.recent?.period ?? sc.current.period, sc.current.period);
   const staff = (await adv.get(`${t}/scorecard`)).body; assert.equal(staff.recent.period, staff.current.period); assert.ok(staff.recent.period >= fin.recent.period);
   assert.equal((await (await login('owner@harbordental.demo')).get(`${t}/scorecard`)).status, 404);
+});
+
+test('budget: seeded from the forecast, round figures, deadline, permanent lock, budget to actual and outlook', async () => {
+  const adv = await login('advisor@sjats.demo'); const owner = await login('owner@cedarridge.demo'); const manager = await login('manager@cedarridge.demo'); const viewer = await login('viewer@cedarridge.demo'); const other = await login('owner@harbordental.demo'); const t = `/api/t/${T.cedar}`;
+  const ls = (await owner.get(`${t}/budgets`)).body; const cur = ls.season.currentFy, next = ls.season.nextFy; assert.equal(ls.years.find((y: any) => y.fiscalYear === cur).status, 'final');
+  // This year's budget was finalized before the year began: tracked against approved actuals, and closed to every kind of change.
+  const d = (await owner.get(`${t}/budgets/${cur}`)).body; assert.equal(d.status, 'final'); assert.equal(d.editable, false); assert.ok(d.finalizedAt < `${cur}-01`); assert.ok(d.seededFrom.basedOnMonthsThrough < cur);
+  for (const k of Object.keys(d.data.base)) assert.ok(d.data.base[k].every((v: number) => v % 10_000 === 0), `${k} is in whole hundreds`);
+  const approved = (await owner.get(`${t}/financials`)).body.months.at(-1).period; assert.equal(d.bva.through, approved, 'clients are measured on approved months only'); const staffBva = (await adv.get(`${t}/budgets/${cur}`)).body.bva; assert.ok(staffBva.through >= d.bva.through);
+  const rev = d.bva.rows.find((r: any) => r.key === 'revenue'); const fin = (await owner.get(`${t}/financials`)).body.months.filter((m: any) => m.period >= cur); assert.equal(rev.ytd.actual, fin.reduce((a: number, m: any) => a + m.pnl.lines.revenue, 0)); assert.equal(rev.ytd.variance, rev.ytd.actual - rev.ytd.budget);
+  assert.equal((await owner.get(`${t}/budgets/${cur}?through=${cur}`)).body.bva.monthsElapsed, 1);
+  assert.equal(d.outlook.actualMonths + d.outlook.forecastMonths, 12); assert.equal(d.outlook.rows.find((r: any) => r.key === 'revenue').budget, rev.fullYearBudget); assert.equal(d.outlook.next3.months, 3); assert.equal(d.outlook.next12.months, 12);
+  assert.equal((await adv.put(`${t}/budgets/${cur}`, { data: d.data })).status, 409); assert.equal((await adv.put(`${t}/budgets/${cur}/deadline`, { deadline: '2030-01-01' })).status, 409); assert.equal((await adv.post(`${t}/budgets/${cur}/finalize`)).status, 409);
+  assert.equal((await adv.del(`${t}/budgets/${cur}`)).status, 409); assert.equal((await adv.post(`${t}/budgets`, { fiscalYear: cur, replace: true })).status, 409);
+  assert.throws(() => db.run("UPDATE budgets SET data_json = '{}' WHERE tenant_id = ? AND fiscal_year = ?", T.cedar, cur), /finalized budget cannot be changed/, 'the database itself refuses'); assert.throws(() => db.run('DELETE FROM budgets WHERE tenant_id = ? AND fiscal_year = ?', T.cedar, cur), /cannot be deleted/);
+  assert.equal((await adv.get(`${t}/budgets/${cur}`)).body.data.base.revenue[0], d.data.base.revenue[0]);
+  // A new draft: start over for a year with no budget. Use the year after next for the test so the demo's own draft is untouched.
+  assert.equal((await other.get(`${t}/budgets`)).status, 404); assert.equal((await other.get(`${t}/budgets/${cur}`)).status, 404); assert.equal((await viewer.post(`${t}/budgets`, { fiscalYear: next })).status, 403);
+  assert.equal((await owner.get(`${t}/budgets/${cur.slice(0, 4)}-03`)).status, 400, 'a budget year must start in the fiscal-year month');
+  if ((await adv.get(`${t}/budgets/${next}`)).body.exists) assert.equal((await adv.del(`${t}/budgets/${next}`)).status, 200);
+  const made = await manager.post(`${t}/budgets`, { fiscalYear: next }); assert.equal(made.status, 200, JSON.stringify(made.body)); const b = made.body; assert.equal(b.status, 'draft'); assert.equal(b.editable, true); assert.equal(b.deadline, `${cur.slice(0, 4)}-12-15`); assert.equal(b.bva, null);
+  assert.ok(b.data.base.revenue.every((v: number) => v > 0 && v % 10_000 === 0)); assert.equal(b.seededFrom.basedOnMonthsThrough, approved); assert.equal((await owner.post(`${t}/budgets`, { fiscalYear: next })).status, 409); assert.equal((await owner.post(`${t}/budgets`, { fiscalYear: next, replace: true })).status, 403);
+  // Line-by-line entry is rounded to hundreds; planned items sit on top of the base; nonsense is refused.
+  const data = JSON.parse(JSON.stringify(b.data)); data.base.marketing[0] = 1_234_567; data.items = [{ id: 'a1', line: 'marketing', description: 'Spring home-show booth', monthlyCents: 255_049, fromMonth: 2, toMonth: 3 }];
+  const sv = await owner.put(`${t}/budgets/${next}`, { data }); assert.equal(sv.status, 200, JSON.stringify(sv.body)); assert.equal(sv.body.data.base.marketing[0], 1_230_000); assert.equal(sv.body.data.items[0].monthlyCents, 260_000); assert.equal(sv.body.updatedBy, 'Casey Owner (demo)');
+  assert.equal((await owner.put(`${t}/budgets/${next}`, { data: { ...data, items: [{ ...data.items[0], line: 'equity' }] } })).status, 400); assert.equal((await owner.put(`${t}/budgets/${next}`, { data: { ...data, base: { ...data.base, revenue: [1, 2] } } })).status, 400);
+  assert.equal((await owner.put(`${t}/budgets/${next}`, { data: { ...data, items: [{ ...data.items[0], fromMonth: 5, toMonth: 2 }] } })).status, 400); assert.equal((await viewer.put(`${t}/budgets/${next}`, { data })).status, 403);
+  // Deadline: only the firm sets it. Once it has passed, clients are locked out and staff can still adjust; extending it lets clients back in.
+  assert.equal((await owner.put(`${t}/budgets/${next}/deadline`, { deadline: '2020-01-01' })).status, 403); assert.equal((await adv.put(`${t}/budgets/${next}/deadline`, { deadline: '2020-01-01' })).body.pastDeadline, true);
+  assert.equal((await owner.get(`${t}/budgets/${next}`)).body.editable, false); const late = await owner.put(`${t}/budgets/${next}`, { data }); assert.equal(late.status, 409); assert.match(late.body.error, /deadline/); assert.equal((await adv.put(`${t}/budgets/${next}`, { data })).status, 200);
+  assert.equal((await adv.put(`${t}/budgets/${next}/deadline`, { deadline: '2999-12-31' })).status, 200); assert.equal((await manager.put(`${t}/budgets/${next}`, { data })).status, 200);
+  // Finalizing is the firm's call and cannot be undone.
+  assert.equal((await owner.post(`${t}/budgets/${next}/finalize`)).status, 403); const fz = await adv.post(`${t}/budgets/${next}/finalize`); assert.equal(fz.status, 200); assert.equal(fz.body.status, 'final'); assert.equal(fz.body.finalizedBy, 'Avery Advisor (demo)'); assert.equal(fz.body.editable, false);
+  assert.equal((await adv.put(`${t}/budgets/${next}`, { data })).status, 409); assert.equal((await owner.put(`${t}/budgets/${next}`, { data })).status, 409); assert.equal((await adv.del(`${t}/budgets/${next}`)).status, 409);
+  // Outlook: the firm adjusts it through the year; the projection moves and the budget does not.
+  const before = (await owner.get(`${t}/budgets/${cur}`)).body; assert.equal((await owner.put(`${t}/outlook`, { levers: { salesChangePct: 0.2 }, note: 'x' })).status, 403); assert.equal((await adv.put(`${t}/outlook`, { levers: { salesChangePct: 9 } })).status, 400);
+  assert.equal((await adv.put(`${t}/outlook`, { levers: { salesChangePct: 0.2 }, note: 'Two large remodels signed for the winter.' })).status, 200); const after = (await owner.get(`${t}/budgets/${cur}`)).body; const pr = (x: any) => x.outlook.rows.find((r: any) => r.key === 'revenue');
+  assert.ok(pr(after).projected > pr(before).projected); assert.equal(pr(after).budget, pr(before).budget); assert.equal(pr(after).actualYtd, pr(before).actualYtd); assert.equal(after.outlookLevers.note, 'Two large remodels signed for the winter.'); assert.ok(after.outlook.next3.revenue > before.outlook.next3.revenue);
+  assert.equal((await adv.put(`${t}/outlook`, { levers: {}, note: '' })).status, 200);
+  // The meeting script quotes budget to actual when a finalized budget exists.
+  assert.ok((await adv.get(`${t}/comms`)).body.script.sections[1].say.some((l: string) => /Against the budget we set for the year/.test(l)));
+});
+
+test('account detail for expanding lines, and the meeting slides', async () => {
+  const adv = await login('advisor@sjats.demo'); const owner = await login('owner@cedarridge.demo'); const t = `/api/t/${T.cedar}`;
+  // Accounts add back to each line for every month the user may see; clients get approved months only.
+  const fin = (await owner.get(`${t}/financials`)).body; const ad = (await owner.get(`${t}/financials/accounts`)).body; assert.deepEqual(ad.periods, fin.months.map((m: any) => m.period));
+  for (const line of ['revenue', 'cogs', 'direct_labor', 'mgmt_labor', 'facilities', 'marketing', 'payroll_taxes_benefits', 'other_opex']) for (const m of fin.months.slice(-3)) assert.equal((ad.lines[line] ?? []).reduce((a: number, x: any) => a + (x.byMonth[m.period] ?? 0), 0), m.pnl.lines[line], `${line} ${m.period}`);
+  assert.ok(ad.lines.direct_labor.length >= 1); assert.ok((await adv.get(`${t}/financials/accounts`)).body.periods.length >= ad.periods.length); assert.equal((await (await login('owner@harbordental.demo')).get(`${t}/financials/accounts`)).status, 404);
+  // Slides: staff only; a real PowerPoint package and a PDF with one page per slide.
+  assert.equal((await owner.get(`${t}/comms/slides.pptx`)).status, 403); assert.equal((await owner.get(`${t}/comms/slides.pdf`)).status, 403);
+  const px = await adv.raw(`${t}/comms/slides.pptx`); assert.equal(px.status, 200); assert.match(px.headers.get('content-disposition')!, /review-slides\.pptx/); const zb = Buffer.from(await px.arrayBuffer()); assert.equal(zb.readUInt32LE(0), 0x04034b50);
+  const names = [...new Set([...zb.toString('latin1').matchAll(/(\[Content_Types\]\.xml|_rels\/\.rels|ppt\/[\w\/]+\.xml)/g)].map((m) => m[1]))]; const slideCount = names.filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n)).length; assert.ok(slideCount >= 7, String(slideCount)); for (const need of ['[Content_Types].xml', '_rels/.rels', 'ppt/presentation.xml', 'ppt/theme/theme1.xml', 'ppt/slideMasters/slideMaster1.xml', 'ppt/slideLayouts/slideLayout1.xml']) assert.ok(names.includes(need), need);
+  const pd = await adv.raw(`${t}/comms/slides.pdf`); const pt = Buffer.from(await pd.arrayBuffer()).toString('latin1'); assert.ok(pt.startsWith('%PDF-1.4')); assert.equal((pt.match(/\/Type \/Page /g) ?? []).length, slideCount); assert.match(pt, /MediaBox \[0 0 960 540\]/); assert.ok(pt.includes('(Scorecard)')); assert.ok(pt.includes('SYNTHETIC DEMO DATA'));
+  assert.ok(pt.includes((await adv.get(`${t}/comms`)).body.values.revenue), 'slides quote the same sales figure as the email and packet');
 });

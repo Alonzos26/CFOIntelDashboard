@@ -7,7 +7,7 @@ export type Role = 'super_admin' | 'advisor' | 'analyst' | 'client_owner' | 'cli
 export const STAFF_ROLES: Role[] = ['super_admin', 'advisor', 'analyst'];
 export const PERMISSIONS = [
   'view', 'view_unapproved', 'view_internal', 'import', 'mapping', 'approve', 'publish', 'settings', 'adjust', 'weekly_entry',
-  'scenario_write', 'scenario_approve', 'actions_manage', 'actions_update', 'comment', 'acknowledge', 'kpi_assign', 'kpi_inputs', 'users', 'export', 'daily_cash',
+  'scenario_write', 'scenario_approve', 'actions_manage', 'actions_update', 'comment', 'acknowledge', 'kpi_assign', 'kpi_inputs', 'users', 'export', 'daily_cash', 'budget_edit',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -15,10 +15,10 @@ export type Permission = (typeof PERMISSIONS)[number];
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   super_admin: [...PERMISSIONS],
   advisor: [...PERMISSIONS],
-  analyst: ['view', 'view_unapproved', 'view_internal', 'import', 'mapping', 'weekly_entry', 'scenario_write', 'comment', 'kpi_inputs', 'export', 'daily_cash'],
+  analyst: ['view', 'view_unapproved', 'view_internal', 'import', 'mapping', 'weekly_entry', 'scenario_write', 'comment', 'kpi_inputs', 'export', 'daily_cash', 'budget_edit'],
   // Daily cash is the client's own bank information: the client enters it. Staff may enter it only while the client owner has allowed bank-feed access (checked in the route).
-  client_owner: ['view', 'scenario_write', 'actions_update', 'comment', 'acknowledge', 'export', 'daily_cash'],
-  client_manager: ['view', 'scenario_write', 'comment', 'daily_cash'],
+  client_owner: ['view', 'scenario_write', 'actions_update', 'comment', 'acknowledge', 'export', 'daily_cash', 'budget_edit'],
+  client_manager: ['view', 'scenario_write', 'comment', 'daily_cash', 'budget_edit'],
   client_viewer: ['view'],
 };
 

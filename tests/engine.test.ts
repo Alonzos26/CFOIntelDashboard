@@ -372,3 +372,54 @@ test('rolling three: direction beside the rolling twelve, with the seasonal chec
   const sc = { period: '2026-06', measures: [] } as any; assert.ok(highlights(sc, {}, [], 4, R.rolling3(build((i) => [100000, i >= 15 ? 40000 : 30000]), 17, S)).some((h) => /^Recent direction\./.test(h)));
   assert.equal(recentChanges(R.rolling3(build((i) => [i % 12 >= 3 && i % 12 <= 5 ? 60000 : 110000, 30000]), 17, S)).length, 0);
 });
+
+test('budget: round figures, season, planned items, budget to actual and the outlook', async () => {
+  const B = await import('../src/engine/budget.ts'); const { zeroPnl, DEFAULT_SETTINGS } = await import('../src/engine/core.ts'); const S = DEFAULT_SETTINGS;
+  // Figures end in zeros: whole hundreds of dollars.
+  assert.equal(B.roundBudget(c(12349.5)), c(12300)); assert.equal(B.roundBudget(c(12350)), c(12400)); assert.equal(B.roundBudget(c(-49)), 0); assert.ok(Object.is(B.roundBudget(-1), 0));
+  // Season: the last quarter of the fiscal year, budgeting the year that follows.
+  assert.deepEqual(B.budgetSeason('2026-11-23', 1), { currentFy: '2026-01', nextFy: '2027-01', inSeason: true, seasonOpens: '2026-10', suggestedFy: '2027-01' }); assert.equal(B.budgetSeason('2026-09-30', 1).inSeason, false); assert.equal(B.budgetSeason('2026-09-30', 1).suggestedFy, '2026-01');
+  assert.deepEqual(B.budgetSeason('2026-05-10', 7), { currentFy: '2025-07', nextFy: '2026-07', inSeason: true, seasonOpens: '2026-04', suggestedFy: '2026-07' }); assert.equal(B.defaultDeadline('2027-01'), '2026-12-15'); assert.equal(B.fyLabel('2027-01'), '2027'); assert.equal(B.fyLabel('2026-07'), 'Jul 2026 – Jun 2027');
+  // Seed from a forecast: every line rounded; months the forecast does not reach are reported.
+  const lm = (period: string, o: Record<string, number>, ownerAdj = 0) => ({ period, pnl: { ...zeroPnl(), ...Object.fromEntries(Object.entries(o).map(([k, v]) => [k, c(v)])) }, ownerAdj: c(ownerAdj) });
+  const fc = B.fyPeriods('2027-01').slice(0, 11).map((p) => lm(p, { revenue: 100049, cogs: 40010, mgmt_labor: 30000, other_opex: 9960 }, 1234));
+  const seed = B.seedBudget('2027-01', fc); assert.deepEqual(seed.missing, ['2027-12']); assert.equal(seed.data.base.revenue[0], c(100000)); assert.equal(seed.data.base.cogs[0], c(40000)); assert.equal(seed.data.base.other_opex[0], c(10000)); assert.equal(seed.data.base.owner_adj[0], c(1200)); assert.equal(seed.data.base.revenue[11], 0);
+  // A flat budget: $100,000 sales, 40% cost of goods, $30,000 payroll, $10,000 other; plus a planned hire from April at $5,000 a month.
+  const base = B.emptyBase(); base.revenue.fill(c(100000)); base.cogs.fill(c(40000)); base.mgmt_labor.fill(c(30000)); base.other_opex.fill(c(10000));
+  const bud = { fiscalYear: '2026-01', base, items: [{ id: 'hire', line: 'mgmt_labor' as const, description: 'Project manager', monthlyCents: c(5000), fromMonth: 3, toMonth: 11 }] };
+  const tot = B.budgetTotals(bud, S); assert.equal(tot.months[2].pretax, c(20000)); assert.equal(tot.months[3].pretax, c(15000)); assert.equal(tot.year.mgmt_labor, c(30000 * 12 + 5000 * 9)); assert.equal(tot.year.true_pretax, c(20000 * 3 + 15000 * 9));
+  // Actuals: three months. Sales run 10% ahead at a thinner margin; other expenses creep up a little more each month.
+  const am = (i: number, revenue: number, cogs: number, labor: number, other: number) => ({ ...lm(`2026-${String(i + 1).padStart(2, '0')}`, { revenue, cogs, mgmt_labor: labor, other_opex: other }), bs: null, status: 'approved' as const });
+  const actual = [am(0, 110000, 46200, 30000, 10600), am(1, 110000, 46200, 30000, 11300), am(2, 110000, 46200, 30000, 12100)];
+  assert.equal(B.budgetVsActual(bud, [], S), null); const v = B.budgetVsActual(bud, actual, S)!; const row = (k: string) => v.rows.find((r) => r.key === k)!;
+  assert.equal(v.through, '2026-03'); assert.equal(v.monthsElapsed, 3); assert.deepEqual([row('revenue').ytd.actual, row('revenue').ytd.budget, row('revenue').ytd.variance, row('revenue').ytd.favorable], [c(330000), c(300000), c(30000), true]); near(row('revenue').ytd.pct.value, 0.1);
+  assert.deepEqual([row('cogs').ytd.variance, row('cogs').ytd.favorable], [c(18600), false]); assert.deepEqual([row('other_opex').month.variance, row('other_opex').ytd.variance, row('other_opex').ytd.favorable, row('other_opex').drifting], [c(2100), c(4000), false, true]);
+  assert.equal(row('mgmt_labor').ytd.favorable, null); assert.equal(row('revenue').drifting, false, 'a steady gap is not drift'); assert.equal(row('true_pretax').ytd.variance, c(30000 - 18600 - 4000)); assert.equal(row('true_pretax').fullYearBudget, c(195000));
+  // Why gross profit differs: volume at the budgeted margin, and the change in margin on actual sales. The two add up exactly.
+  const g = v.grossProfitBridge!; assert.equal(g.volumeCents, c(18000)); assert.equal(g.marginCents, c(-6600)); assert.equal(g.volumeCents + g.marginCents, row('gross_profit').ytd.variance); near(g.actualGpPct, 0.58); near(g.budgetGpPct, 0.6);
+  assert.ok(v.headline.includes('$67,400, $7,400 ahead of the budget of $60,000')); assert.ok(v.drivers.some((d) => /higher sales volume .* weaker margin/.test(d))); assert.ok(v.drivers.some((d) => /Other operating expenses has moved further from budget/.test(d)));
+  assert.equal(B.budgetVsActual(bud, actual, S, '2026-02')!.monthsElapsed, 2);
+  // A gap in the actuals: year to date compares only the months that exist on both sides.
+  assert.equal(B.budgetVsActual(bud, [actual[0], actual[2]], S)!.rows[0].ytd.budget, c(200000));
+  // Outlook: three actual months plus nine forecast months, against the budget; and the next three and twelve months.
+  const forecast = Array.from({ length: 12 }, (_, i) => lm(`2026-${String(i + 4).padStart(2, '0')}`.replace('2026-13', '2027-01').replace('2026-14', '2027-02').replace('2026-15', '2027-03'), { revenue: 110000, cogs: 46200, mgmt_labor: 35000, other_opex: 12000 }));
+  const o = B.outlook(bud, actual, forecast, S); const orow = (k: string) => o.rows.find((r) => r.key === k)!; assert.equal(o.actualMonths, 3); assert.equal(o.forecastMonths, 9); assert.deepEqual(o.uncoveredMonths, []);
+  assert.deepEqual([orow('revenue').actualYtd, orow('revenue').forecastRest, orow('revenue').projected, orow('revenue').budget, orow('revenue').variance], [c(330000), c(990000), c(1320000), c(1200000), c(120000)]);
+  assert.equal(orow('true_pretax').projected, c(67400 + 9 * 16800)); assert.equal(orow('true_pretax').favorable, true); assert.match(o.headline, /3 month\(s\) of actuals and 9 of forecast.*above the budget/);
+  assert.deepEqual([o.next3!.from, o.next3!.to, o.next3!.revenue, o.next3!.truePretax], ['2026-04', '2026-06', c(330000), c(50400)]); assert.equal(o.next12!.to, '2027-03'); assert.equal(o.next12!.revenue, c(1320000)); assert.equal(B.outlook(bud, actual, forecast.slice(0, 2), S).next3, null);
+  assert.equal(B.outlook(bud, actual, forecast.slice(0, 6), S).uncoveredMonths.length, 3);
+  // Changing a line's annual figure keeps its monthly pattern, in round numbers.
+  assert.deepEqual(B.spreadAnnual([c(100), c(300), ...Array(10).fill(0)], c(8000)), [c(2000), c(6000), ...Array(10).fill(0)]); assert.deepEqual(B.spreadAnnual(Array(12).fill(0), c(12600)), Array(12).fill(c(1100)));
+});
+
+test('packet PDF pieces: PNG logo decoding is strict, and a bad logo never breaks a document', async () => {
+  const { decodePng, Pdf } = await import('../src/server/pdf.ts'); const { deflateSync, crc32 } = await import('node:zlib');
+  const chunk = (type: string, d: Buffer) => { const len = Buffer.alloc(4); len.writeUInt32BE(d.length); const body = Buffer.concat([Buffer.from(type, 'latin1'), d]); const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(body) >>> 0); return Buffer.concat([len, body, crc]); };
+  const png = (w: number, h: number, ct: number, rows: number[][]) => { const ih = Buffer.alloc(13); ih.writeUInt32BE(w, 0); ih.writeUInt32BE(h, 4); ih[8] = 8; ih[9] = ct; return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ih), chunk('IDAT', deflateSync(Buffer.from(rows.flat()))), chunk('IEND', Buffer.alloc(0))]); };
+  // 2x2 RGBA: first row unfiltered, second row stored with the "up" filter (differences from the row above).
+  const d = decodePng(png(2, 2, 6, [[0, 10, 20, 30, 255, 40, 50, 60, 128], [2, 1, 1, 1, 0, 2, 2, 2, 0]]))!;
+  assert.deepEqual([d.w, d.h], [2, 2]); assert.deepEqual([...d.rgb], [10, 20, 30, 40, 50, 60, 11, 21, 31, 42, 52, 62]); assert.deepEqual([...d.alpha!], [255, 128, 255, 128]);
+  assert.equal(decodePng(Buffer.from('not a png at all, just some text that is long enough')), null); assert.equal(decodePng(png(1, 1, 3, [[0, 0]])), null, 'palette images are not supported and are skipped');
+  const p = new Pdf(792, 612); p.addPage(); const im = p.addImage(d); p.image(im, 10, 10, 20, 20); p.line([[0, 0], [10, 10]], [0, 0, 1]); const out = p.build({ title: 't', author: 'a' }).toString('latin1');
+  assert.ok(out.includes('/Subtype /Image') && out.includes('/SMask') && out.includes('/Im1 Do')); const xref = Number(out.match(/startxref\n(\d+)/)![1]); assert.equal(out.slice(xref, xref + 4), 'xref');
+});

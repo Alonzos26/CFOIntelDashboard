@@ -122,3 +122,15 @@ CREATE TABLE IF NOT EXISTS bank_feed_consent (
 -- Per-client wording of the monthly email the firm sends with the statements packet. Staff only; never exposed to client roles.
 CREATE TABLE IF NOT EXISTS comm_templates (
   tenant_id TEXT PRIMARY KEY REFERENCES tenants(id), subject TEXT NOT NULL, body TEXT NOT NULL, updated_by TEXT REFERENCES users(id), updated_at TEXT NOT NULL);
+
+-- Annual budget per client and fiscal year (fiscal_year is the first month, YYYY-MM). Figures are whole hundreds of dollars.
+-- Once finalized a budget is a record of what was planned at the time: the triggers below refuse any later change or deletion.
+CREATE TABLE IF NOT EXISTS budgets (
+  tenant_id TEXT NOT NULL REFERENCES tenants(id), fiscal_year TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','final')), deadline TEXT NOT NULL,
+  data_json TEXT NOT NULL, seeded_from_json TEXT, created_by TEXT NOT NULL REFERENCES users(id), created_at TEXT NOT NULL, updated_by TEXT REFERENCES users(id), updated_at TEXT NOT NULL,
+  finalized_by TEXT REFERENCES users(id), finalized_at TEXT, PRIMARY KEY (tenant_id, fiscal_year));
+CREATE TRIGGER IF NOT EXISTS budgets_final_no_update BEFORE UPDATE ON budgets WHEN OLD.status = 'final' BEGIN SELECT RAISE(ABORT, 'A finalized budget cannot be changed.'); END;
+CREATE TRIGGER IF NOT EXISTS budgets_final_no_delete BEFORE DELETE ON budgets WHEN OLD.status = 'final' BEGIN SELECT RAISE(ABORT, 'A finalized budget cannot be deleted.'); END;
+-- The running outlook: forecast assumptions the firm adjusts through the year. The budget never changes; this does.
+CREATE TABLE IF NOT EXISTS forecast_outlook (
+  tenant_id TEXT PRIMARY KEY REFERENCES tenants(id), levers_json TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', updated_by TEXT REFERENCES users(id), updated_at TEXT NOT NULL);

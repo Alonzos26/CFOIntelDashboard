@@ -7,6 +7,8 @@ import { buildScorecard } from '../engine/scorecard.ts';
 import * as imp from './importer.ts';
 import * as svc from './services.ts';
 import { PROFILES, generate, type Generated } from './synthetic.ts';
+import * as bud from './budget.ts';
+import { budgetSeason } from '../engine/budget.ts';
 import { syncKpiLibrary } from './library.ts';
 
 
@@ -81,6 +83,12 @@ export function seed(db: Db, today = new Date().toISOString().slice(0, 10)) {
   // ---- Lakeside Auto Repair: a new client with no data yet — import examples/imports/lakeside-*.csv to walk the onboarding workflow
   const lakeside = tenant('Lakeside Auto Repair — SYNTHETIC DEMO', 'portal-client-1003', 'Automotive Services', { pretaxTargetPct: 0.10, dlerTarget: 2.2 });
   member(advisor, lakeside, 'advisor'); member(analyst, lakeside, 'analyst'); member(user('owner@lakesideauto.demo', 'Lee Owner (demo)'), lakeside, 'client_owner');
+  // Demo budgets for Cedar Ridge: this year's was set last December from what was known then and is locked; next year's is a draft when in season.
+  { const today = new Date().toISOString().slice(0, 10); const season = budgetSeason(today, 1); const fy = season.currentFy; const before = addMonths(fy, -1);
+    bud.create(db, cedar, advisor, fy, { levers: { salesChangePct: 0.06 }, sourceLabel: 'Forecast with sales up 6%', approvedOnly: false, asOf: before, deadline: `${before}-15` });
+    const r = db.get('SELECT data_json FROM budgets WHERE tenant_id = ? AND fiscal_year = ?', cedar, fy); const d = JSON.parse(r.data_json); d.items.push({ id: 'pm', line: 'mgmt_labor', description: 'Second project manager from April', monthlyCents: 650_000, fromMonth: 3, toMonth: 11 }, { id: 'truck', line: 'other_opex', description: 'Lease on a second crew truck', monthlyCents: 120_000, fromMonth: 5, toMonth: 11 });
+    db.run('UPDATE budgets SET data_json = ?, created_at = ?, updated_at = ? WHERE tenant_id = ? AND fiscal_year = ?', JSON.stringify(d), `${before}-08T17:00:00.000Z`, `${before}-12T17:00:00.000Z`, cedar, fy); bud.finalize(db, cedar, advisor, fy, `${before}-18T17:00:00.000Z`);
+    if (season.inSeason) bud.create(db, cedar, advisor, season.nextFy, { levers: { salesChangePct: 0.05 }, sourceLabel: 'Forecast with sales up 5%', approvedOnly: false }); }
   db.audit(null, null, 'seed.completed', undefined, undefined, { synthetic: true });
   return true;
 }

@@ -366,3 +366,14 @@ export function recentFor(db: Db, tenantId: string, approvedOnly: boolean, perio
   if (!period) return null; const months = loadMonths(db, tenantId, approvedOnly); const idx = months.findIndex((m) => m.period === period);
   return idx < 0 ? null : rolling3(months, idx, loadSettings(db, tenantId));
 }
+
+/** Every P&L account with its monthly amounts, grouped by management line, for expanding a line on screen. Clients see approved months only. */
+export function accountDetail(db: Db, tenantId: string, approvedOnly: boolean) {
+  const periods = loadMonths(db, tenantId, approvedOnly).map((m) => m.period); const lines: Record<string, { id: string; name: string; byMonth: Record<string, number> }[]> = {}; if (!periods.length) return { periods, lines };
+  const ok = new Set(periods); const acc = new Map<string, { id: string; name: string; line: string; byMonth: Record<string, number> }>();
+  for (const r of db.all(`SELECT a.id, a.name, a.line, f.period, SUM(f.amount_cents * a.sign) AS cents FROM facts f JOIN accounts a ON a.id = f.account_id WHERE f.tenant_id = ? AND a.tenant_id = ? AND f.active = 1 AND a.statement = 'pnl' AND a.line IS NOT NULL GROUP BY a.id, f.period`, tenantId, tenantId)) {
+    if (!ok.has(r.period)) continue; const a = acc.get(r.id) ?? { id: r.id, name: r.name, line: r.line, byMonth: {} }; a.byMonth[r.period] = r.cents; acc.set(r.id, a); }
+  for (const a of acc.values()) (lines[a.line] ??= []).push({ id: a.id, name: a.name, byMonth: a.byMonth });
+  for (const k of Object.keys(lines)) lines[k].sort((x, y) => Object.values(y.byMonth).reduce((p, v) => p + Math.abs(v), 0) - Object.values(x.byMonth).reduce((p, v) => p + Math.abs(v), 0));
+  return { periods, lines };
+}

@@ -13,6 +13,7 @@ import { CashReportsCard } from './cashreports.tsx';
 import { ProductivityCard, RecentPill, RollingTab } from './rolling.tsx';
 import { ProfitLevelsCard, ValuationCard } from './valuation.tsx';
 import { WhatIfForecast } from './whatif.tsx';
+import { AcctRows, ExpandAll, Toggle, sumAcct, useExpand } from './expand.tsx';
 import { FourForcesCard } from './fourforces.tsx';
 
 const TERM: Record<string, string> = { gross_margin: 'Gross Margin', adjusted_pretax: 'Adjusted Pretax Profit', labor_efficiency: 'Direct LYR', operating_cash_flow: 'Operating Cash Flow', reserve_coverage: 'Operating Reserve', cash: 'Operating Reserve' };
@@ -118,11 +119,16 @@ export function ScorecardPage() {
 // ---------------------------------------------------------------- Profit & Performance
 const sumLines = (ms: any[]) => { const l = zeroPnl(); let adj = 0; for (const m of ms) { for (const k of PNL_LINES) l[k] += m.pnl.lines[k]; adj += m.pnl.ownerAdj; } return { l, adj }; };
 export function Performance() {
-  const t = useT(); const r = useLoad(() => get(`${t.base}/financials`), [t.tid]); const [tab, setTab] = useState('pnl');
+  const t = useT(); const r = useLoad(() => get(`${t.base}/financials`), [t.tid]); const [tab, setTab] = useState('pnl'); const ex = useExpand();
   return <Async r={r}>{(d) => { if (!d.months.length) return <><h1>Profit &amp; Performance</h1><Empty>No approved financial periods yet.</Empty></>;
     const s: Settings = d.settings; const ms = d.months; const n = ms.length; const cur = ms[n - 1];
     const win = (from: number, to: number) => { if (from < 0 || to < 0 || to >= n) return null; const { l, adj } = sumLines(ms.slice(from, to + 1)); return computePnl(l, adj, s); };
     const fy = (i: number) => { const [y, m] = ms[i].period.split('-').map(Number); const start = `${m >= s.fiscalYearStartMonth ? y : y - 1}-${String(s.fiscalYearStartMonth).padStart(2, '0')}`; return ms.findIndex((x: any) => x.period >= start); };
+    const span = (from: number, to: number): string[] | null => (from < 0 || to < 0 || to >= n ? null : ms.slice(from, to + 1).map((x: any) => x.period));
+    const colPeriods = [span(n - 1, n - 1), span(n - 2, n - 2), span(n - 13, n - 13), span(fy(n - 1), n - 1), n > 12 ? span(fy(n - 13), n - 13) : null, n >= 12 ? span(n - 12, n - 1) : null, n >= 24 ? span(n - 24, n - 13) : null];
+    const XKEYS = ['revenue', 'cogs', 'direct_labor', 'facilities', 'marketing', 'mgmt_labor', 'payroll_taxes_benefits', 'other_opex', 'other_net'];
+    const xrow = (k: string, label: React.ReactNode, f: (p: NonNullable<ReturnType<typeof win>>) => string, lines?: string[]) => <React.Fragment key={k}>{row(<Toggle ex={ex} k={k}>{label}</Toggle>, f)}
+      <AcctRows ex={ex} k={k} lines={lines} span={colPeriods.length} cells={(a, line) => colPeriods.map((ps, i) => <td key={i} className="num">{ps ? $(sumAcct(a, ps) * (lines && line !== 'other_income_expense' ? -1 : 1)) : '—'}</td>)} /></React.Fragment>;
     const cols: [string, ReturnType<typeof win>][] = [[P(cur.period), win(n - 1, n - 1)], ['Prior month', win(n - 2, n - 2)], ['Same month last year', win(n - 13, n - 13)], ['Year to date', win(fy(n - 1), n - 1)], ['Prior YTD', n > 12 ? win(fy(n - 13), n - 13) : null], ['Rolling 12', n >= 12 ? win(n - 12, n - 1) : null], ['Previous rolling 12', n >= 24 ? win(n - 24, n - 13) : null]];
     const row = (label: React.ReactNode, f: (p: NonNullable<ReturnType<typeof win>>) => string, cls = '') => <tr className={cls}><td>{label}</td>{cols.map(([h, p]) => <td key={h} className="num">{p ? f(p) : '—'}</td>)}</tr>;
     const $ = (v: number) => fmtMoney(v); const last = ms.slice(-24); const lab = last.map((m: any) => P(m.period));
@@ -132,13 +138,13 @@ export function Performance() {
       {d.basis?.text && <Note tone={d.basis.value === 'unknown' ? 'info' : 'warn'}>{d.basis.text}</Note>}
       {d.reporting && (d.reporting.status === 'late' || d.reporting.status === 'overdue') && <Note tone="warn">{d.reporting.text}</Note>}
       <div className="tabs" role="tablist">{[['pnl', 'Management P&L'], ['r12', 'Rolling 12 & 3'], ['owner', 'Owner pay & salary cap'], ['value', 'Business value'], ['trends', 'Trends'], ['bs', 'Balance sheet & cash flow'], ['forecast', 'What-if forecast']].map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
-      {tab === 'pnl' && <Card><div className="tbl-wrap"><table className="tbl pnl"><thead><tr><th></th>{cols.map(([h]) => <th key={h} className="num">{h}</th>)}</tr></thead><tbody>
-        {row('Revenue', (p) => $(p.lines.revenue))}{row('Less non-labor cost of goods sold', (p) => $(p.lines.cogs))}
+      {tab === 'pnl' && <Card title="Management P&L" right={<ExpandAll ex={ex} keys={XKEYS} />}><p className="meta">Select a line to open the accounts inside it; select it again to close.</p><div className="tbl-wrap"><table className="tbl pnl"><thead><tr><th></th>{cols.map(([h]) => <th key={h} className="num">{h}</th>)}</tr></thead><tbody>
+        {xrow('revenue', 'Revenue', (p) => $(p.lines.revenue))}{xrow('cogs', 'Less non-labor cost of goods sold', (p) => $(p.lines.cogs))}
         {row(<Term name="Gross Profit">Gross profit</Term>, (p) => $(p.grossProfit), 'tot')}{row(<Term name="Gross Margin">Gross margin %</Term>, (p) => fmtPct(p.grossMarginPct.value), 'sub')}
-        {row('Less direct labor', (p) => $(p.lines.direct_labor))}{row(<Term name="Contribution Margin">Contribution margin</Term>, (p) => $(p.contributionMargin), 'tot')}{row(<Term name="Direct LYR">Direct LYR</Term>, (p) => fmtRatio(p.dLER.value), 'sub')}
-        {(['facilities', 'marketing', 'mgmt_labor', 'payroll_taxes_benefits', 'other_opex'] as const).map((k) => <React.Fragment key={k}>{row(LINE_LABELS[k], (p) => $(p.lines[k]))}</React.Fragment>)}
+        {xrow('direct_labor', 'Less direct labor', (p) => $(p.lines.direct_labor))}{row(<Term name="Contribution Margin">Contribution margin</Term>, (p) => $(p.contributionMargin), 'tot')}{row(<Term name="Direct LYR">Direct LYR</Term>, (p) => fmtRatio(p.dLER.value), 'sub')}
+        {(['facilities', 'marketing', 'mgmt_labor', 'payroll_taxes_benefits', 'other_opex'] as const).map((k) => xrow(k, LINE_LABELS[k], (p) => $(p.lines[k])))}
         {row('Total operating expenses', (p) => $(p.totalOpex), 'tot')}{row(<Term name="Management LYR">Management LYR</Term>, (p) => fmtRatio(p.mLER.value), 'sub')}
-        {row('Operating income', (p) => $(p.operatingIncome), 'tot')}{row('Other income (expense), net', (p) => $(p.otherTotal))}
+        {row('Operating income', (p) => $(p.operatingIncome), 'tot')}{xrow('other_net', 'Other income (expense), net', (p) => $(p.otherTotal), ['other_income_expense', 'depreciation', 'interest_expense'])}
         {row('Pretax profit (reported)', (p) => $(p.pretax), 'tot')}{row('% of revenue', (p) => fmtPct(p.pretaxPct.value), 'sub')}
         {row('Owner compensation adjustment', (p) => $(-p.ownerAdj))}{row(<Term name="Adjusted Pretax Profit">Adjusted pretax profit (true profit)</Term>, (p) => $(p.adjustedPretax), 'tot strong')}{row('% of revenue', (p) => fmtPct(p.adjustedPretaxPct.value), 'sub')}
         {row(<Term name="Salary Cap">Salary cap</Term>, (p) => $(p.salaryCap))}{row('Labor incl. owner adjustment', (p) => $(p.adjustedLabor))}{row('Under (over) salary cap', (p) => $(p.salaryCapHeadroom), 'tot')}

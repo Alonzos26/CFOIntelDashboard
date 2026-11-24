@@ -47,7 +47,7 @@ export interface Levers {
   distributionPolicy: 'tax_only' | 'tax_then_excess' | 'none';
 }
 export const TAX_MONTHS = [1, 4, 6, 9];
-export interface WhatIfMonth extends RoadRow { truePretax: number; taxDistribution: number; profitDistribution: number; coreCapitalTarget: number }
+export interface WhatIfMonth extends RoadRow { truePretax: number; taxDistribution: number; profitDistribution: number; coreCapitalTarget: number; /** The forecast P&L by line, and the owner market-wage adjustment, for budgeting. */ lines: PnlLines; ownerAdj: number }
 export interface WhatIfSummary {
   fiscalYear: { from: string; to: string; actualMonths: number; forecastMonths: number; revenue: number; truePretax: number; pretaxPct: Ratio; targetPct: number };
   next12: { revenue: number; truePretax: number; pretaxPct: Ratio; ler: Ratio; startCash: number | null; endCash: number | null; minCash: number | null; minCashPeriod: string | null; endCoreCapital: number | null; endTarget: number; coreCapitalReached: string | null; taxDistributions: number; profitDistributions: number };
@@ -95,7 +95,7 @@ function run(months: MonthData[], s: Settings, lv: Levers, horizon: number) {
     const input: StepInput = { period, revenue: p.revenue, cogs: p.cogs, labor, marketing: p.marketing, facilities: p.facilities, payrollTaxesBenefits: p.payroll_taxes_benefits, otherOpex: p.other_opex, otherNet, nonCash: p.depreciation, arEnd, apEnd, locEnd: st.loc - payLoc, notesEnd: st.notes - payNotes, distributions: taxDist, purchases: lv.purchasesMonthlyCents };
     let r = step(st, input, o); let profitDist = 0;
     if (lv.distributionPolicy === 'tax_then_excess' && bs) { const excess = r.row.coreCapital - target - Math.max(0, Math.round(accrued * s.taxReserveRate)); if (excess > 0) { profitDist = excess; r = step(st, { ...input, distributions: taxDist + excess }, o); } }
-    st = r.state; out.push({ ...r.row, truePretax: c.adjustedPretax, taxDistribution: taxDist, profitDistribution: profitDist, coreCapitalTarget: target });
+    st = r.state; out.push({ ...r.row, truePretax: c.adjustedPretax, taxDistribution: taxDist, profitDistribution: profitDist, coreCapitalTarget: target, lines: p, ownerAdj: ownerAdjMonthly });
   }
   return out;
 }

@@ -10,6 +10,11 @@ import { profitPlan } from '../engine/profitplan.ts';
 import { evaluateWagePlan, type WagePlanInput } from '../engine/ownerwage.ts';
 import { buyIn } from '../engine/capital.ts';
 import * as comms from './comms.ts';
+import * as bud from './budget.ts';
+import { pptx, slidesPdf } from './slides.ts';
+import { packetPdf } from './packet.ts';
+import { existsSync, readFileSync } from 'node:fs';
+import { BUDGET_LINES, roundBudget } from '../engine/budget.ts';
 import { MERGE_FIELDS, renderTemplate } from '../engine/comms.ts';
 import { profitLevels, valuation, VALUE_ELEMENTS } from '../engine/valuation.ts';
 import { FINANCIAL_VARIABLES, FormulaError, isFinancialVariable, formulaVariables, parseFormula } from '../engine/kpi.ts';
@@ -326,11 +331,13 @@ export function registerRoutes(app: App) {
 
   // ---------- cash flow ----------
   // ---------- client communications (firm staff only; client roles have no route into any of this) ----------
+  /** The firm's logo for client packets, read once. A missing or unreadable file just means the firm name is printed instead. */
+  let logoCache: Buffer | null | undefined; const firmLogo = () => { if (logoCache === undefined) { try { logoCache = existsSync(app.cfg.firmLogoPath) ? readFileSync(app.cfg.firmLogoPath) : null; } catch { logoCache = null; } } return logoCache; };
   const commsFor = (c: Ctx, note?: unknown) => comms.gather(db, c.tenantId, { advisorName: c.session.user.name.replace(/\s*\(.*\)\s*$/, ''), publicUrl: app.cfg.publicUrl, personalNote: note === undefined ? '' : str(note, 'Personal note', 2000, false) });
   const readyComms = (c: Ctx, note?: unknown) => { const g = commsFor(c, note); if (!g.ready) throw new HttpError(409, g.reason); return g; };
   app.on('GET', `${T}/comms`, (c) => {
     const g = commsFor(c, c.query.get('note') ?? ''); const t = comms.template(db, c.tenantId); if (!g.ready) return { ready: false, reason: g.reason, template: t, mergeFields: MERGE_FIELDS };
-    return { ready: true, period: g.period, clientName: g.clientName, notices: g.notices, template: t, mergeFields: MERGE_FIELDS, values: g.vars, draft: comms.draft(db, c.tenantId, g), recipients: g.contacts, packetName: comms.packetName(g), script: g.script, scriptText: comms.scriptText(g.script), scorecardPublished: g.scorecardPublished };
+    return { ready: true, period: g.period, clientName: g.clientName, notices: g.notices, template: t, mergeFields: MERGE_FIELDS, values: g.vars, draft: comms.draft(db, c.tenantId, g), recipients: g.contacts, packetName: comms.packetName(g), script: g.script, scriptText: comms.scriptText(g.script), scorecardPublished: g.scorecardPublished, slideNames: { pptx: comms.deckName(g, 'pptx'), pdf: comms.deckName(g, 'pdf') } };
   }, { perm: 'view_internal' });
   app.on('PUT', `${T}/comms/template`, (c) => {
     if (c.body.reset === true) { db.run('DELETE FROM comm_templates WHERE tenant_id = ?', c.tenantId); db.audit(c.tenantId, c.session.user.id, 'comms.template_reset', 'tenant', c.tenantId); return comms.template(db, c.tenantId); }
@@ -340,13 +347,16 @@ export function registerRoutes(app: App) {
     db.audit(c.tenantId, c.session.user.id, 'comms.template_saved', 'tenant', c.tenantId); return comms.template(db, c.tenantId);
   }, { perm: 'view_internal' });
   app.on('GET', `${T}/comms/packet.pdf`, (c) => {
-    const g = readyComms(c); const pdf = comms.packetPdf(g, c.session.user.name.replace(/\s*\(.*\)\s*$/, '')); db.audit(c.tenantId, c.session.user.id, 'comms.packet_generated', 'period', g.period);
+    const g = readyComms(c); const pdf = packetPdf(g, c.session.user.name.replace(/\s*\(.*\)\s*$/, ''), { logo: firmLogo() }); db.audit(c.tenantId, c.session.user.id, 'comms.packet_generated', 'period', g.period);
     c.res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${comms.packetName(g)}"`, 'Cache-Control': 'no-store' }); c.res.end(pdf);
   }, { perm: 'view_internal', raw: true });
+  for (const [ext, type, render] of [['pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', pptx], ['pdf', 'application/pdf', slidesPdf]] as const)
+    app.on('GET', `${T}/comms/slides.${ext}`, (c) => { const g = readyComms(c); const file = render(comms.deck(db, c.tenantId, g, c.session.user.name.replace(/\s*\(.*\)\s*$/, ''))); db.audit(c.tenantId, c.session.user.id, 'comms.slides_generated', 'period', g.period, { format: ext });
+      c.res.writeHead(200, { 'Content-Type': type, 'Content-Disposition': `attachment; filename="${comms.deckName(g, ext)}"`, 'Cache-Control': 'no-store' }); c.res.end(file); }, { perm: 'view_internal', raw: true });
   app.on('POST', `${T}/comms/email.eml`, (c) => {
     const g = readyComms(c); const to = (Array.isArray(c.body.to) ? c.body.to : []).slice(0, 10).map((x: unknown) => str(x, 'Recipient', 200)); for (const a of to) if (!/^[^\s@<>,;"]+@[^\s@<>,;"]+\.[^\s@<>,;"]+$/.test(a)) throw new HttpError(400, `"${a}" is not an email address.`);
     const subject = str(c.body.subject, 'Subject', 300), body = str(c.body.body, 'Message', 20000); if (/\{\{\s*[a-z_]+\s*\}\}/.test(subject + body)) throw new HttpError(400, 'The draft still contains an unfilled {{field}}. Fill it in or remove it first.');
-    const eml = comms.emailFile({ to, subject, body, attachment: comms.packetPdf(g, c.session.user.name.replace(/\s*\(.*\)\s*$/, '')), filename: comms.packetName(g) });
+    const eml = comms.emailFile({ to, subject, body, attachment: packetPdf(g, c.session.user.name.replace(/\s*\(.*\)\s*$/, ''), { logo: firmLogo() }), filename: comms.packetName(g) });
     db.audit(c.tenantId, c.session.user.id, 'comms.email_draft_generated', 'period', g.period, { recipients: to.length });
     c.res.writeHead(200, { 'Content-Type': 'message/rfc822', 'Content-Disposition': `attachment; filename="${comms.packetName(g).replace(/\.pdf$/, '.eml')}"`, 'Cache-Control': 'no-store' }); c.res.end(eml);
   }, { perm: 'view_internal', raw: true });
@@ -363,7 +373,34 @@ export function registerRoutes(app: App) {
   app.on('GET', `${T}/what-if`, (c) => svc.whatIfForecast(db, c.tenantId, clientOnly(c)), { perm: 'view' });
   app.on('POST', `${T}/what-if`, (c) => svc.whatIfForecast(db, c.tenantId, clientOnly(c), levers(c.body.levers)), { perm: 'view' });
 
+  // ---------- annual budget, budget to actual, outlook ----------
+  const today = () => now().slice(0, 10);
+  const budgetData = (b: any, fy: string) => {
+    if (!b || typeof b !== 'object' || !b.base || typeof b.base !== 'object') throw new HttpError(400, 'Budget figures are missing.');
+    const cell = (v: unknown) => roundBudget(int(v ?? 0, 'Budget figure', { min: -MONEY_MAX, max: MONEY_MAX })); // every figure is stored in whole hundreds of dollars
+    const base: any = {}; for (const k of BUDGET_LINES) { const a = b.base[k] ?? Array(12).fill(0); if (!Array.isArray(a) || a.length !== 12) throw new HttpError(400, 'Each budget line needs twelve months.'); base[k] = a.map(cell); }
+    const items = (Array.isArray(b.items) ? b.items : []).slice(0, 60).map((x: any) => { const fromMonth = int(x.fromMonth, 'From month', { min: 0, max: 11 }), toMonth = int(x.toMonth, 'To month', { min: 0, max: 11 }); if (toMonth < fromMonth) throw new HttpError(400, 'A planned item cannot end before it starts.');
+      return { id: str(x.id, 'Item', 60), line: oneOf(x.line, 'Line', BUDGET_LINES), description: str(x.description, 'Description', 200), monthlyCents: cell(x.monthlyCents), fromMonth, toMonth }; });
+    return { fiscalYear: fy, base, items };
+  };
+  app.on('GET', `${T}/budgets`, (c) => bud.list(db, c.tenantId, today()), { perm: 'view' });
+  app.on('GET', `${T}/budgets/:fy`, (c) => bud.detail(db, c.tenantId, period(c.params.fy), c.access, today(), c.query.get('through') ? period(c.query.get('through')) : undefined), { perm: 'view' });
+  app.on('POST', `${T}/budgets`, (c) => {
+    const fy = period(c.body.fiscalYear); const replace = c.body.replace === true; if (replace && !c.access.can('approve')) throw new HttpError(403, 'Only your advisor can rebuild a budget from the forecast.');
+    let lv: Record<string, unknown> = {}; let label = 'Forecast with nothing changed (last year\'s pattern)'; const src = c.body.source ?? 'history';
+    if (src === 'outlook') { lv = bud.outlookLevers(db, c.tenantId).levers; label = 'Current outlook'; }
+    else if (src !== 'history') { const sc = db.get("SELECT name, inputs_json FROM scenarios WHERE id = ? AND tenant_id = ? AND type = 'forecast'", str(src, 'Source', 80), c.tenantId); if (!sc) throw new HttpError(400, 'That saved what-if forecast was not found.'); lv = levers(JSON.parse(sc.inputs_json)); label = `Saved what-if forecast: ${sc.name}`; }
+    bud.create(db, c.tenantId, c.session.user.id, fy, { levers: lv, sourceLabel: label, approvedOnly: clientOnly(c), replace });
+    return bud.detail(db, c.tenantId, fy, c.access, today());
+  }, { perm: 'budget_edit' });
+  app.on('PUT', `${T}/budgets/:fy`, (c) => { const fy = period(c.params.fy); bud.save(db, c.tenantId, c.session.user.id, fy, budgetData(c.body.data, fy), c.access, today()); return bud.detail(db, c.tenantId, fy, c.access, today()); }, { perm: 'budget_edit' });
+  app.on('PUT', `${T}/budgets/:fy/deadline`, (c) => { const fy = period(c.params.fy); bud.setDeadline(db, c.tenantId, c.session.user.id, fy, isoDate(c.body.deadline, 'Deadline')); return bud.detail(db, c.tenantId, fy, c.access, today()); }, { perm: 'approve' });
+  app.on('POST', `${T}/budgets/:fy/finalize`, (c) => { const fy = period(c.params.fy); bud.finalize(db, c.tenantId, c.session.user.id, fy); return bud.detail(db, c.tenantId, fy, c.access, today()); }, { perm: 'approve' });
+  app.on('DELETE', `${T}/budgets/:fy`, (c) => { bud.remove(db, c.tenantId, c.session.user.id, period(c.params.fy)); return { ok: true }; }, { perm: 'approve' });
+  app.on('PUT', `${T}/outlook`, (c) => { if (!c.access.isStaff) throw new HttpError(403, 'The outlook is maintained by your advisor.'); bud.saveOutlook(db, c.tenantId, c.session.user.id, levers(c.body.levers), str(c.body.note ?? '', 'Note', 1000, false)); return bud.outlookLevers(db, c.tenantId); }, { perm: 'adjust' });
+
   // ---------- P&L line drill-down ----------
+  app.on('GET', `${T}/financials/accounts`, (c) => svc.accountDetail(db, c.tenantId, clientOnly(c)), { perm: 'view' });
   app.on('GET', `${T}/financials/line-accounts`, (c) => { const r = svc.lineAccounts(db, c.tenantId, oneOf(c.query.get('line'), 'Line', svc.DRILL_LINES as any), period(c.query.get('to')), clientOnly(c)); if (!r) throw notFound(); return r; }, { perm: 'view' });
   // ---------- daily cash report and two-week cash flow forecast ----------
   app.on('GET', `${T}/cash-reports`, (c) => svc.cashReports(db, c.tenantId, clientOnly(c)), { perm: 'view' });

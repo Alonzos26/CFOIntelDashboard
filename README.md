@@ -23,7 +23,7 @@ Requires Node.js 22.18 or newer. No database server needed for local use.
 ```bash
 npm install            # react, react-dom, esbuild, typescript and type packages
 npm run demo           # builds the client, seeds synthetic demo data, serves http://localhost:4300
-npm test               # 46 tests: engine vs. workbook values, and the six acceptance workflows over HTTP
+npm test               # 50 tests: engine vs. workbook values, and the six acceptance workflows over HTTP
 ```
 
 Demo accounts (password for all: `demo-CFO-2026!`, override with `SEED_PASSWORD`). All demo data is synthetic and labelled as such on every screen.
@@ -72,8 +72,11 @@ Each is automated in `tests/server.test.ts` and can be walked by hand:
 | Rolling-twelve P&L (pretax target, above/below, salary cap, labor yield now and needed, stretch target), salary cap chart, operating-expense category checks | Built and tested |
 | Weekly sales and productivity report (all-labor yield by week, month to date, year to date; payroll the week's gross profit supports) | Built and tested; needs office and management payroll entered weekly |
 | Monthly reports due-by day (default the 5th) with late/overdue notice; bill-pay day for the cash forecast | Built and tested |
-| Client Communications (firm staff only): per-client email template with merge fields, monthly email draft, statements packet as a PDF, draft email file with the PDF attached, meeting script | Built and tested. The app does not send email; staff send the draft from their own mail program |
+| Client Communications (firm staff only): per-client email template with merge fields, monthly email draft, statements packet as a PDF (the Overview page, priorities and monthly trend, management P&L, budget to actual, balance sheet and cash flow statement), draft email file with the PDF attached, meeting script | Built and tested. The app does not send email; staff send the draft from their own mail program |
 | Rolling three beside the rolling twelve: direction per measure with a same-months-last-year check for seasonality; shown on the Rolling 12 & 3 tab, as a marker on the scorecard, and in the email highlights and meeting script when direction changes | Built and tested. Grades and targets stay on twelve months |
+| Annual budget: first draft from the what-if forecast, line-by-line monthly entry in whole hundreds of dollars, planned items, firm-set deadline, permanent lock on finalizing; monthly budget to actual with reasons; adjustable outlook for the next 3 and 12 months and the projected year | Built and tested |
+| Expand and collapse: any line on the management P&L, the budget grid and budget to actual opens to the imported accounts inside it | Built and tested (accounts add back to the line) |
+| Meeting slides beside the meeting script: PowerPoint (.pptx, also opens in Google Slides and Keynote) and PDF, from the same approved figures | Built and tested; opened with two independent PowerPoint readers |
 | What-if forecast: eight plain-language levers, a thin P&L, the road from profit to cash, fiscal-year landing, comparison with changing nothing; clients run and save their own | Built and tested against the book's Exhibit 10.1 |
 | Tax implications line on the scorecard (advisor grade and comment) | Built and tested |
 | Estimated business value: three years of true pretax profit plus equity, fundability of a partial or full purchase, rule-of-thumb comparisons, five elements of value | Built and tested; a management estimate, not an appraisal |
