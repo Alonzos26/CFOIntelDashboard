@@ -1,7 +1,11 @@
-node_modules/
+node_modules
 public/
 data/
-*.sqlite*
+# Database files, but not the schema (db/schema.sqlite.sql)
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
 .env
 # Never commit client workbooks or exports
 imports-private/
