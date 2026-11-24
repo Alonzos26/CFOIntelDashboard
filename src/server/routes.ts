@@ -9,6 +9,7 @@ import { evaluateHire, type HiringInputs } from '../engine/hiring.ts';
 import { profitPlan } from '../engine/profitplan.ts';
 import { evaluateWagePlan, type WagePlanInput } from '../engine/ownerwage.ts';
 import { buyIn } from '../engine/capital.ts';
+import { COLLATERAL_TYPES, ELIGIBILITY, LOAN_DOCS, LOAN_ENGINE_VERSION, LOAN_PURPOSES, PLAN_SECTIONS, PROGRAM_KEYS, type LoanInput, defaultLoanInput, evaluateLoan, loanHistory } from '../engine/loans.ts';
 import * as comms from './comms.ts';
 import * as bud from './budget.ts';
 import { pptx, slidesPdf } from './slides.ts';
@@ -372,6 +373,50 @@ export function registerRoutes(app: App) {
   };
   app.on('GET', `${T}/what-if`, (c) => svc.whatIfForecast(db, c.tenantId, clientOnly(c)), { perm: 'view' });
   app.on('POST', `${T}/what-if`, (c) => svc.whatIfForecast(db, c.tenantId, clientOnly(c), levers(c.body.levers)), { perm: 'view' });
+
+  // ---------- Business Plan & Loans: SBA loan readiness ----------
+  // History comes from the months this user may see (clients: approved only). Inputs are validated here and the result is always recomputed.
+  const loanCtx = (c: Ctx) => { const months = svc.loadMonths(db, c.tenantId, clientOnly(c)); return loanHistory(months, svc.loadSettings(db, c.tenantId)); };
+  const sanitizeLoan = (o: any): LoanInput => {
+    if (!o || typeof o !== 'object') throw new HttpError(400, 'Loan input is required.');
+    const m = (v: unknown, n: string, min = 0) => int(v ?? 0, n, { min, max: MONEY_MAX });
+    const bool = (v: unknown) => v === true;
+    const list = <T,>(v: unknown, n: string, max: number, f: (x: any) => T): T[] => { if (v === undefined) return []; if (!Array.isArray(v) || v.length > max) throw new HttpError(400, `${n} must be a list of at most ${max} items.`); return v.map(f); };
+    const flags = (v: unknown, keys: string[]) => Object.fromEntries(keys.map((k) => [k, bool((v as any)?.[k])]));
+    const H = ['fy_prev', 'fy_last', 'ttm'] as const;
+    const rate = num(o.rate, 'Interest rate'); if (rate < 0 || rate > 0.4) throw new HttpError(400, 'Interest rate is out of range.');
+    const g = o.guarantor ?? {}; const sc = g.creditScore === null || g.creditScore === undefined || g.creditScore === '' ? null : int(g.creditScore, 'Credit score', { min: 300, max: 850 });
+    return {
+      program: oneOf(o.program, 'Program', PROGRAM_KEYS), purpose: oneOf(o.purpose, 'Purpose', LOAN_PURPOSES), amountCents: m(o.amountCents, 'Loan amount'),
+      rateType: oneOf(o.rateType, 'Rate type', ['variable', 'fixed'] as const), rate, termYears: int(o.termYears, 'Term', { min: 1, max: 30 }),
+      yearsInBusiness: int(o.yearsInBusiness ?? 0, 'Years in business', { min: 0, max: 200 }), specialPurposeProperty: bool(o.specialPurposeProperty),
+      basis: oneOf(o.basis, 'Underwriting basis', ['fy_prev', 'fy_last', 'ttm', 'avg2', 'proj'] as const),
+      addbacks: Object.fromEntries(H.map((k) => [k, m(o.addbacks?.[k], 'Add-back', -MONEY_MAX)])) as LoanInput['addbacks'], addbackNote: str(o.addbackNote, 'Add-back note', 1000, false),
+      manual: Object.fromEntries(H.map((k) => [k, { revenueCents: m(o.manual?.[k]?.revenueCents, 'Revenue'), ebitdaCents: m(o.manual?.[k]?.ebitdaCents, 'EBITDA', -MONEY_MAX) }])) as LoanInput['manual'],
+      projection: { label: str(o.projection?.label, 'Projection label', 60, false) || 'Projected year 1', revenueCents: m(o.projection?.revenueCents, 'Projected revenue'), ebitdaCents: m(o.projection?.ebitdaCents, 'Projected EBITDA', -MONEY_MAX) },
+      debts: list(o.debts, 'Debts', 50, (d) => ({ name: str(d?.name, 'Debt name', 200, false), balanceCents: m(d?.balanceCents, 'Debt balance'), monthlyCents: m(d?.monthlyCents, 'Monthly payment'), refinanced: bool(d?.refinanced) })),
+      guarantor: { incomeCents: m(g.incomeCents, 'Guarantor income'), livingCents: m(g.livingCents, 'Living expenses'), debtMonthlyCents: m(g.debtMonthlyCents, 'Personal debt payments'), creditScore: sc, liquidCents: m(g.liquidCents, 'Liquid assets') },
+      uses: list(o.uses, 'Uses of proceeds', 50, (u) => ({ description: str(u?.description, 'Use of proceeds', 300, false), amountCents: m(u?.amountCents, 'Use amount') })),
+      sources: { equityCents: m(o.sources?.equityCents, 'Owner equity'), sellerStandbyCents: m(o.sources?.sellerStandbyCents, 'Seller note'), otherCents: m(o.sources?.otherCents, 'Other sources') },
+      collateral: list(o.collateral, 'Collateral', 50, (x) => ({ type: oneOf(x?.type, 'Collateral type', Object.keys(COLLATERAL_TYPES)), description: str(x?.description, 'Collateral description', 300, false), valueCents: m(x?.valueCents, 'Collateral value') })),
+      eligibility: flags(o.eligibility, ELIGIBILITY.map((e) => e.key)), docs: flags(o.docs, LOAN_DOCS.map((d) => d.key)),
+      plan: Object.fromEntries(PLAN_SECTIONS.map((p) => [p.key, str(o.plan?.[p.key], p.label, 20000, false)])),
+    };
+  };
+  const loanOut = (c: Ctx) => {
+    const row = db.get('SELECT l.*, u.name AS updated_by_name FROM loan_plans l LEFT JOIN users u ON u.id = l.updated_by WHERE l.tenant_id = ?', c.tenantId);
+    const history = loanCtx(c); const input: LoanInput = row ? { ...defaultLoanInput(), ...JSON.parse(row.input_json) } : { ...defaultLoanInput(), yearsInBusiness: Math.floor(history.monthsOnFile / 12) };
+    return { saved: !!row, updatedAt: row?.updated_at ?? null, updatedBy: row?.updated_by_name ?? null, input, history, result: evaluateLoan(input, history), clientView: clientOnly(c) };
+  };
+  app.on('GET', `${T}/loans`, (c) => loanOut(c), { perm: 'view' });
+  app.on('PUT', `${T}/loans`, (c) => {
+    const input = sanitizeLoan(c.body.input); const r = evaluateLoan(input, loanCtx(c));
+    db.run(`INSERT INTO loan_plans (tenant_id, input_json, engine_version, updated_by, updated_at) VALUES (?,?,?,?,?)
+      ON CONFLICT (tenant_id) DO UPDATE SET input_json = excluded.input_json, engine_version = excluded.engine_version, updated_by = excluded.updated_by, updated_at = excluded.updated_at`,
+      c.tenantId, JSON.stringify(input), LOAN_ENGINE_VERSION, c.session.user.id, now());
+    db.audit(c.tenantId, c.session.user.id, 'loan_plan.saved', 'loan_plan', c.tenantId, { program: input.program, purpose: input.purpose, amountCents: input.amountCents, dscr: r.dscr, score: r.score });
+    return loanOut(c);
+  }, { perm: 'scenario_write' });
 
   // ---------- annual budget, budget to actual, outlook ----------
   const today = () => now().slice(0, 10);

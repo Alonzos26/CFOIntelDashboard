@@ -75,11 +75,13 @@ CREATE FUNCTION budgets_final_locked() RETURNS trigger AS $$ BEGIN RAISE EXCEPTI
 CREATE TRIGGER budgets_final_locked BEFORE UPDATE OR DELETE ON budgets FOR EACH ROW WHEN (OLD.status = 'final') EXECUTE FUNCTION budgets_final_locked();
 CREATE TABLE forecast_outlook (tenant_id uuid PRIMARY KEY REFERENCES tenants(id), levers_json jsonb NOT NULL, note text NOT NULL DEFAULT '', updated_by uuid REFERENCES users(id), updated_at timestamptz NOT NULL);
 
+CREATE TABLE loan_plans (tenant_id uuid PRIMARY KEY REFERENCES tenants(id), input_json jsonb NOT NULL, engine_version text NOT NULL, updated_by uuid NOT NULL REFERENCES users(id), updated_at timestamptz NOT NULL);
+
 -- Row-level security on every tenant-owned table.
 DO $$
 DECLARE t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['accounts','import_batches','facts','period_status','adjustments','scorecards','weekly_entries','weekly_reports','comments','cash_items','scenarios','tenant_kpis','kpi_inputs','actions','owner_wage_plans','daily_cash','bank_feed_consent','comm_templates','budgets','forecast_outlook']
+  FOREACH t IN ARRAY ARRAY['accounts','import_batches','facts','period_status','adjustments','scorecards','weekly_entries','weekly_reports','comments','cash_items','scenarios','tenant_kpis','kpi_inputs','actions','owner_wage_plans','daily_cash','bank_feed_consent','comm_templates','budgets','forecast_outlook','loan_plans']
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);

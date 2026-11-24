@@ -13,6 +13,7 @@ src/engine/    Pure calculation engine. No I/O. Same code runs on the server and
   kpi.ts         safe KPI formula parser and evaluator
   insights.ts    Observation → Cause → Impact → Action rules
   profitplan.ts  profit needs and gap analysis
+  loans.ts       SBA loan readiness: DSCR, program fit, equity, collateral, readiness score
 src/server/    HTTP API (Node built-ins only)
   app.ts         routing, sessions, server-side tenant authorization, CSRF, CSP
   auth.ts        password hashing, sessions, portal token exchange, role permissions
@@ -116,3 +117,12 @@ A live bank feed is not implemented. When one is added, the sync job must check 
 
 - **Expand and collapse** (`src/client/expand.tsx`): `GET /financials/accounts` returns every P&L account with its monthly amounts grouped by management line, for the months the user may see. Tables fetch it once, the first time a line is opened, and sum the periods each column covers. Budgets are set at the line, so under a budget line the accounts show actuals only (the same month a year earlier on the budget grid; the month and year to date on budget to actual).
 - **Meeting slides** (`src/server/slides.ts`, deck built by `deck` in `src/server/comms.ts`): one deck model rendered to `.pptx` (a hand-written Open XML package, zipped with `node:zlib`) and to a 16:9 PDF. Staff only, approved months only, and audited like the packet. Google Slides opens the `.pptx` directly; there is no Google integration.
+
+## Business Plan & Loans (SBA loan readiness)
+
+- **Where:** engine `src/engine/loans.ts`, routes `GET`/`PUT /api/t/:tid/loans` in `src/server/routes.ts`, screen `src/client/loans.tsx`, table `loan_plans` (one workspace per client; inputs only).
+- **Figures:** `loanHistory` builds the last two complete fiscal years and the trailing twelve months from the months the user may see, so clients are measured on approved months only. Pretax profit is as reported (before the owner-pay normalization), because lenders underwrite the books and returns. EBITDA = pretax + interest + depreciation + one-time add-backs the user enters and explains. Columns with no imported months can be entered by hand; the projected column is always entered.
+- **DSCR:** EBITDA ÷ required principal and interest on all business debt, including the new loan; debt the loan refinances drops out. The required level follows the loan type (`dscrRule`): 1.15x for 7(a) generally, 1.25x for initial acquisitions and owner buyouts with historical earnings only (SOP 50 10 8.1, Appendix 15), planning floors for 504 and Microloans. Startups are underwritten on projections.
+- **Rules:** every SBA value (Prime for the maximum-rate table, coverage floors, equity percentages, program limits) is in `LOAN_RULES` and `PROGRAMS`. Update them when SBA issues a new SOP or notice, and when Prime changes. FY 2027 guaranty fees are not modelled.
+- **Saving:** `scenario_write` can save (client owners and managers, firm staff); every role with `view` can read and print. The server validates every field, drops unknown checklist keys, recomputes the result and writes `loan_plan.saved` to the audit log.
+- **Lender package:** printed from the browser like the other reports. It is a pre-qualification summary, not a commitment to lend.

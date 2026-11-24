@@ -23,7 +23,7 @@ Requires Node.js 22.18 or newer. No database server needed for local use.
 ```bash
 npm install            # react, react-dom, esbuild, typescript and type packages
 npm run demo           # builds the client, seeds synthetic demo data, serves http://localhost:4300
-npm test               # 50 tests: engine vs. workbook values, and the six acceptance workflows over HTTP
+npm test               # 60 tests: engine vs. workbook values, and the six acceptance workflows over HTTP
 ```
 
 Demo accounts (password for all: `demo-CFO-2026!`, override with `SEED_PASSWORD`). All demo data is synthetic and labelled as such on every screen.
@@ -84,6 +84,7 @@ Each is automated in `tests/server.test.ts` and can be walked by hand:
 | Value and distributions at different pretax profit tiers over five years | Built and tested against the book's exhibits; an illustration, not a forecast |
 | Drill-down from a rolling-twelve P&L line to the imported accounts behind it | Built and tested (accounts tie to the line) |
 | Cash-basis / accrual-basis flag on each import, with a notice on Profit & Performance | Built and tested |
+| Business Plan & Loans: SBA loan readiness score, DSCR on the SBA method (EBITDA ÷ P&I on all business debt) from the approved financials, global cash flow, 7(a) / Express / 504 / Microloan fit and maximum rates, equity injection, collateral, eligibility and document checklists, ten-section business plan, printable lender package | Built and tested; rule values in `LOAN_RULES` (`src/engine/loans.ts`) follow SBA SOP 50 10 8 / 8.1 as of November 2026 and must be kept current |
 | Scorecard with configurable targets, grades, advisor commentary, publish | Built |
 | Executive overview with 8 KPI cards, drill-downs, top-3 priorities | Built (Budget / Forecast selector options are placeholders) |
 | Balance sheet, indirect cash flow with reconciliation difference, DSO, operating reserve | Built |

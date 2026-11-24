@@ -5,6 +5,7 @@ import { get, post, setBearer, setOnUnauthorized } from './api.ts';
 import { ErrorNote, Loading, Note } from './ui.tsx';
 import { Overview, ScorecardPage, Performance, WeeklyPulse, CashFlow, Reports, Actions, IndustryKpis } from './pages.tsx';
 import { DecisionLab, ProfitPlanner } from './lab.tsx';
+import { LoansPage } from './loans.tsx';
 import { Portfolio, DataSources, Review, ClientSettings, KpiLibrary } from './advisor.tsx';
 
 export interface Tenant { id: string; name: string; role: string; isStaff: boolean; permissions: string[]; isSynthetic: boolean }
@@ -21,10 +22,10 @@ const usePath = (): [string, (p: string) => void] => {
 
 const NAV: { key: string; label: string; perm?: string; staff?: boolean; group?: string }[] = [
   { key: 'overview', label: 'Overview' }, { key: 'weekly', label: 'Weekly Pulse' }, { key: 'scorecard', label: 'Scorecard' }, { key: 'performance', label: 'Profit & Performance' },
-  { key: 'cash', label: 'Cash Flow' }, { key: 'lab', label: 'Decision Lab' }, { key: 'budget', label: 'Budget' }, { key: 'planner', label: 'Profit Planner' }, { key: 'kpis', label: 'Industry KPIs' }, { key: 'actions', label: 'Goals & Actions' }, { key: 'reports', label: 'Reports' },
+  { key: 'cash', label: 'Cash Flow' }, { key: 'lab', label: 'Decision Lab' }, { key: 'budget', label: 'Budget' }, { key: 'planner', label: 'Profit Planner' }, { key: 'loans', label: 'Business Plan & Loans' }, { key: 'kpis', label: 'Industry KPIs' }, { key: 'actions', label: 'Goals & Actions' }, { key: 'reports', label: 'Reports' },
   { key: 'data', label: 'Data Sources & Mappings', perm: 'import', group: 'Advisor tools' }, { key: 'review', label: 'Review & Approval', perm: 'view_internal', group: 'Advisor tools' }, { key: 'comms', label: 'Client Communications', perm: 'view_internal', group: 'Advisor tools' }, { key: 'settings', label: 'Client Settings', perm: 'settings', group: 'Advisor tools' },
 ];
-const PAGES: Record<string, React.FC> = { overview: Overview, weekly: WeeklyPulse, scorecard: ScorecardPage, performance: Performance, cash: CashFlow, lab: DecisionLab, budget: BudgetPage, planner: ProfitPlanner, kpis: IndustryKpis, actions: Actions, reports: Reports, data: DataSources, review: Review, comms: ClientComms, settings: ClientSettings };
+const PAGES: Record<string, React.FC> = { overview: Overview, weekly: WeeklyPulse, scorecard: ScorecardPage, performance: Performance, cash: CashFlow, lab: DecisionLab, budget: BudgetPage, planner: ProfitPlanner, loans: LoansPage, kpis: IndustryKpis, actions: Actions, reports: Reports, data: DataSources, review: Review, comms: ClientComms, settings: ClientSettings };
 
 function Login({ onDone }: { onDone: () => void }) {
   const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState<string | null>(null); const [busy, setBusy] = useState(false);

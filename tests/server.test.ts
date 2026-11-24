@@ -487,3 +487,26 @@ test('account detail for expanding lines, and the meeting slides', async () => {
   const pd = await adv.raw(`${t}/comms/slides.pdf`); const pt = Buffer.from(await pd.arrayBuffer()).toString('latin1'); assert.ok(pt.startsWith('%PDF-1.4')); assert.equal((pt.match(/\/Type \/Page /g) ?? []).length, slideCount); assert.match(pt, /MediaBox \[0 0 960 540\]/); assert.ok(pt.includes('(Scorecard)')); assert.ok(pt.includes('SYNTHETIC DEMO DATA'));
   assert.ok(pt.includes((await adv.get(`${t}/comms`)).body.values.revenue), 'slides quote the same sales figure as the email and packet');
 });
+
+test('Business Plan & Loans: saved per client, recomputed on the server, approved months only for clients, tenant-isolated', async () => {
+  const t = `/api/t/${T.cedar}`;
+  const owner = await login('owner@cedarridge.demo'); const adv = await login('advisor@sjats.demo'); const viewer = await login('viewer@cedarridge.demo'); const adv2 = await login('advisor2@sjats.demo');
+  const first = await owner.get(`${t}/loans`); assert.equal(first.status, 200, JSON.stringify(first.body)); assert.equal(first.body.saved, false);
+  const staffView = await adv.get(`${t}/loans`);
+  // Cedar Ridge's latest month is deliberately unapproved: the client's trailing twelve months end a month earlier than the advisor's.
+  assert.notEqual(first.body.history.asOf, staffView.body.history.asOf); assert.ok(first.body.history.asOf < staffView.body.history.asOf);
+  assert.ok(first.body.history.columns.some((c: any) => c.months === 12), 'imported financials feed the earnings columns');
+  const input = { ...first.body.input, purpose: 'equipment', amountCents: 50_000_000, uses: [{ description: 'Excavator', amountCents: 50_000_000 }], eligibility: { citizen: true, bogus: true }, plan: { exec: 'Short.' } };
+  const saved = await owner.put(`${t}/loans`, { input }); assert.equal(saved.status, 200, JSON.stringify(saved.body));
+  assert.equal(saved.body.saved, true); assert.equal(saved.body.input.eligibility.citizen, true); assert.equal(saved.body.input.eligibility.bogus, undefined, 'unknown checklist keys are dropped');
+  assert.equal(saved.body.result.newMonthlyCents, 660_754); assert.equal(typeof saved.body.result.score, 'number');
+  assert.equal((await adv.get(`${t}/loans`)).body.input.amountCents, 50_000_000, 'staff see the client workspace');
+  assert.equal((await viewer.put(`${t}/loans`, { input })).status, 403, 'read-only users cannot change it');
+  assert.equal((await viewer.get(`${t}/loans`)).status, 200);
+  assert.equal((await adv2.get(`${t}/loans`)).status, 404, 'an advisor not assigned to the client cannot reach it');
+  assert.equal((await adv2.put(`${t}/loans`, { input })).status, 404);
+  for (const bad of [{ ...input, program: 'payday' }, { ...input, rate: 2 }, { ...input, amountCents: -5 }, { ...input, termYears: 99 }, { ...input, collateral: [{ type: 'Crypto', description: '', valueCents: 1 }] }])
+    assert.equal((await owner.put(`${t}/loans`, { input: bad })).status, 400, JSON.stringify(bad).slice(0, 80));
+  assert.equal(db.all("SELECT 1 FROM audit_log WHERE tenant_id = ? AND action = 'loan_plan.saved'", T.cedar).length, 1);
+  assert.equal((await owner.get(`/api/t/${T.harbor}/loans`)).status, 404, 'a client cannot open another client');
+});

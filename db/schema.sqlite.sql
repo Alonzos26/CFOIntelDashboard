@@ -134,3 +134,7 @@ CREATE TRIGGER IF NOT EXISTS budgets_final_no_delete BEFORE DELETE ON budgets WH
 -- The running outlook: forecast assumptions the firm adjusts through the year. The budget never changes; this does.
 CREATE TABLE IF NOT EXISTS forecast_outlook (
   tenant_id TEXT PRIMARY KEY REFERENCES tenants(id), levers_json TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', updated_by TEXT REFERENCES users(id), updated_at TEXT NOT NULL);
+
+-- SBA loan readiness workspace (Business Plan & Loans): one per client. Inputs only; results are recomputed by src/engine/loans.ts.
+CREATE TABLE IF NOT EXISTS loan_plans (
+  tenant_id TEXT PRIMARY KEY REFERENCES tenants(id), input_json TEXT NOT NULL, engine_version TEXT NOT NULL, updated_by TEXT NOT NULL REFERENCES users(id), updated_at TEXT NOT NULL);
